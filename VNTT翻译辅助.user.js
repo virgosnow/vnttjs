@@ -111,7 +111,7 @@ const rules={
     const GetActiveRule = ()=>Object.entries(rules).filter(([key])=>GM_getValue("enable_rule:"+key,true)).map(([_,group])=>group).flat().find(item=>item.matcher.test(document.location.href));
     let url=document.location.href;
     let rule=GetActiveRule();
-    console.log(rule?`【VNTT机器翻译】使用【${rule.name}】规则`:`【VNTT机器翻译】当前无匹配规则`);
+    console.log(`【VNTT翻译辅助】启动`);
     let mtFunc = e=>{
         if(!rule)return;
         const choice=GM_getValue('translate_choice','Mirai翻译');
@@ -288,15 +288,12 @@ function SetMemText(jpText,chText) {
 function GetMemText(jpText) {
     jpText = ToCDB(jpText)
     let mmText = GM_getValue(jpText.replace( /[\x20-\x7e]+/g,'【码】'), '')
-    console.log(mmText)
     if (mmText == '') {
         return ''
     }
     let chText = ''
     let words = mmText.replace( /[\x20-\x7e]+/g,'【码】').split('【码】')
-    console.log('words', words)
     let codes = jpText.replace( /[^\x20-\x7e]+/g,'【文】').trim('【文】').split('【文】')
-    console.log('codes', codes)
     for (let i = 0; i < words.length; i++) {
         chText+=words[i]
         if (i < codes.length) {
@@ -398,7 +395,6 @@ async function translate_mirai(raw,lang){
     }
     const tran = sessionStorage.getItem('mirai_tran')
     const data = '{"input":"'+raw.replace(/\n/g,'\\n')+'","source":"ja","target":"zh","profile":"inmt","filter_profile":"nmt","tran":"'+tran+'","InmtTarget":"","InmtTranslateType":"gisting","usePrefix":false,"adaptPhrases":[],"zt":false}'
-    console.log(data)
     const options = {
         method:"POST",
         url:'https://trial.miraitranslate.com/trial/api/translate.php',
