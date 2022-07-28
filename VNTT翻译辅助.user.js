@@ -152,8 +152,11 @@ const rules={
                         const submit = element.getElementsByClassName('editable-submit')[0]
                         // 有翻译记忆采用翻译记忆
                         // 无翻译记忆开启机翻
-                        if ( chText !== '' && edit.innerText === "Empty" ) {
-                            sleep(50).then(() => {editArea.value = chText; submit.click()});
+                        if ( chText !== '' ) {
+                            editArea.value = chText
+                            if (edit.innerText === "Empty") {
+                                sleep(50).then(() => {submit.click()});
+                            }
                         } else {
                             const choice = GM_getValue('translate_choice','Mirai翻译')
                             if (choice != '关闭翻译') {
