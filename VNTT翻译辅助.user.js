@@ -1,36 +1,21 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/*
+// @connect      miraitranslate.com
 // @connect      fanyi.baidu.com
 // @connect      translate.google.com
-// @connect      fy.iciba.com
-// @connect      cn.bing.com
-// @connect      fanyi.youdao.com
-// @connect      m.youdao.com
-// @connect      api.interpreter.caiyunai.com
-// @connect      papago.naver.com
 // @connect      fanyi.qq.com
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
 // @grant        GM_getValue
-// @require      https://cdn.bootcdn.net/ajax/libs/crypto-js/4.0.0/crypto-js.min.js
-// @require      https://cdn.jsdelivr.net/npm/js-base64@2.5.2/base64.min.js
 // ==/UserScript==
 
-//保护可能被覆盖的方法
-const tmpIFrame = document.createElement("iframe");
-document.body.appendChild(tmpIFrame);
-window.sessionStorage = tmpIFrame.contentWindow.sessionStorage;
-const sessionStorage = window.sessionStorage;
-document.body.removeChild(tmpIFrame);
-//
-
-const transdict={'谷歌翻译':translate_gg,'谷歌翻译mobile':translate_ggm,'腾讯翻译':translate_tencent,'有道翻译':translate_youdao,'有道翻译mobile':translate_youdao_mobile,'百度翻译':translate_baidu,'彩云小译':translate_caiyun,'必应翻译':translate_biying,'Papago翻译':translate_papago,'爱词霸翻译':translate_icib,'关闭翻译':()=>{}};
-const startup={'有道翻译':translate_youdao_startup,'腾讯翻译':translate_tencent_startup,'百度翻译':translate_baidu_startup,'彩云小译':translate_caiyun_startup,'Papago翻译':translate_papago_startup};
+const transdict={'Mirai翻译':translate_mirai,'谷歌翻译':translate_gg,'腾讯翻译':translate_tencent,'百度翻译':translate_baidu,'关闭翻译':()=>{}};
+const startup={'Mirai翻译':translate_mirai_startup,'腾讯翻译':translate_tencent_startup,'百度翻译':translate_baidu_startup};
 const baseoptions = {
     'enable_pass_lang': {
         declare: '不翻译中文',
@@ -46,14 +31,10 @@ const baseoptions = {
     'show_info': {
         declare: '显示翻译源',
         default_value: true,
-    },
-    'fullscrenn_hidden':{
-        declare: '全屏时不显示',
-        default_value: true,
     }
 };
 
-const [enable_pass_lang,remove_url,show_info,fullscrenn_hidden]=Object.keys(baseoptions).map(key=>GM_getValue(key,baseoptions[key].default_value));
+const [enable_pass_lang,remove_url,show_info]=Object.keys(baseoptions).map(key=>GM_getValue(key,baseoptions[key].default_value));
 
 const globalProcessingSave=[];
 
@@ -124,7 +105,6 @@ function initPanel(){
     open.addEventListener("touchend",()=>{GM_setValue("position_right",open.style.right);GM_setValue("position_top",open.style.top);if(!open._tempIsMove){mask.style.display='flex'};open._tempIsMove=false})
     window.top.document.body.appendChild(open);
     window.top.document.querySelector('.js_translate option[value='+choice+']').selected=true;
-    if(fullscrenn_hidden)window.top.document.addEventListener('fullscreenchange',()=>{open.style.display=window.top.document.fullscreenElement?"none":"flex"});
 }
 
 const rules={
@@ -142,31 +122,17 @@ const rules={
     const GetActiveRule = ()=>Object.entries(rules).filter(([key])=>GM_getValue("enable_rule:"+key,true)).map(([_,group])=>group).flat().find(item=>item.matcher.test(document.location.href));
     let url=document.location.href;
     let rule=GetActiveRule();
-    setInterval(()=>{
-        if(document.location.href!=url){
-            url=document.location.href;
-            const ruleNew=GetActiveRule();
-            if(ruleNew!=rule){
-                if(ruleNew!=null){
-                    console.log(`【VNTT机器翻译】检测到URl变更，改为使用【${ruleNew.name}】规则`)
-                }else{
-                    console.log(`【VNTT机器翻译】当前无匹配规则`)
-                }
-                rule=ruleNew;
-            }
-        }
-    },200)
     console.log(rule?`【VNTT机器翻译】使用【${rule.name}】规则`:`【VNTT机器翻译】当前无匹配规则`);
     let mtFunc = e=>{
         if(!rule)return;
-        const choice=GM_getValue('translate_choice','百度翻译');
+        const choice=GM_getValue('translate_choice','Mirai翻译');
         // const temp=[...new Set(rule.selector(e))];
         let temp = rule.selector(e)
         for(let i=0;i<temp.length;i++){
             const now=temp[i];
             if(globalProcessingSave.includes(now))continue;
             globalProcessingSave.push(now);
-            const text=remove_url?url_filter(rule.textGetter(now)):rule.textGetter(now);
+            const text = rule.textGetter(now);
             if(text.length==0)continue;
             if(sessionStorage.getItem(choice+'-'+text)){
                 rule.textSetter(now,choice,sessionStorage.getItem(choice+'-'+text));
@@ -200,7 +166,10 @@ const rules={
                         if ( chText !== '' && edit.innerText === "Empty" ) {
                             sleep(50).then(() => {editArea.value = chText; submit.click()});
                         } else {
-                            PromiseRetryWrap(startup[GM_getValue('translate_choice','百度翻译')]).then(()=>{document.js_translater=setInterval(mtFunc(element),20)});
+                            const choice = GM_getValue('translate_choice','Mirai翻译')
+                            if (choice != '关闭翻译') {
+                                PromiseRetryWrap(startup[choice]).then(()=>{document.js_translater=setInterval(mtFunc(element),20)});
+                            }
                         }
                         // 加复制原文按钮
                         let copyBtn = document.createElement('button')
@@ -416,51 +385,43 @@ function url_filter(text){
     return text.replace(/(https?|ftp|file):\/\/[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]/g,'');
 }
 
-async function pass_lang(raw){
-    if(!enable_pass_lang)return;
-    try{
-        const result = await check_lang(raw)
-        //确认是否为中文，是则中断promise
-        if(result=='zh')return new Promise(()=>{});
-        return result
-    }catch(err){
-        console.log(err);
-        return
-    }
-    return
-}
-
 async function check_lang(raw){
     // 短句子会被初判为中文 先直接返回jp
     return "jp"
-    /*
-    const options = {
-        method:"POST",
-        url:'https://fanyi.baidu.com/langdetect',
-        data:'query='+encodeURIComponent(raw.replace(/[\uD800-\uDBFF]$/, "").slice(0,50)),
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-        }
-    }
-    const res = await Request(options);
-    try{
-        return JSON.parse(res.responseText).lan
-    }catch(err){
-        console.log(err);
-        return
-    }
-    */
-}
-
-
-function guid() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        let r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-        return v.toString(16);
-    });
 }
 
 //--综合工具区--end
+
+//--Mirai翻译--start
+async function translate_mirai_startup(){
+    // if(sessionStorage.getItem('mirai_tran'))return;
+    const options = {
+        method:'GET',
+        url:'https://miraitranslate.com/trial',
+    }
+    const res = await Request(options);
+    sessionStorage.setItem('mirai_tran',/tran = "(.*?)"/.exec(res.responseText)[1])
+}
+
+async function translate_mirai(raw,lang){
+    if(!lang){
+        lang = await check_lang(raw)
+    }
+    //const token = sessionStorage.getItem('mirai_tran');//get token
+    const tran = sessionStorage.getItem('mirai_tran')
+    const data = '{"input":"'+raw+'","source":"ja","target":"zh","profile":"inmt","filter_profile":"nmt","tran":"'+tran+'","InmtTarget":"","InmtTranslateType":"gisting","usePrefix":false,"adaptPhrases":[],"zt":false}'
+    const options = {
+        method:"POST",
+        url:'https://trial.miraitranslate.com/trial/api/translate.php',
+        data:data,
+        //cookie:'translate_session=cfqjro2lqpaskvjgigi70nl5t4',
+        headers: {
+            "Content-Type": 'application/json',
+        },
+    }
+    return await BaseTranslate('Mirai翻译',raw,options,res=>JSON.parse(res).outputs[0].output[0].translation)
+}
+//--Mirai翻译--end
 
 //--谷歌翻译--start
 async function translate_gg(raw){
@@ -479,21 +440,6 @@ async function translate_gg(raw){
 }
 
 //--谷歌翻译--end
-
-//--谷歌翻译mobile--start
-async function translate_ggm(raw){
-    const options = {
-        method:"GET",
-        url:"https://translate.google.com/m?tl=zh-CN&q="+encodeURIComponent(raw),
-        headers:{
-            "Host": "translate.google.com",
-        },
-        anonymous:true,
-        nocache:true,
-    }
-    return await BaseTranslate('谷歌翻译mobile',raw,options,res=>/class="result-container">((?:.|\n)*?)<\/div/.exec(res)[1])
-}
-//--谷歌翻译mobile--end
 
 //--百度翻译--start
 function tk(a,b){
@@ -558,92 +504,6 @@ async function translate_baidu(raw,lang){
 
 //--百度翻译--end
 
-//--爱词霸翻译--start
-
-async function translate_icib(raw){
-    const options = {
-        method:"POST",
-        url:'http://fy.iciba.com/ajax.php?a=fy',
-        data:'f=auto&t=auto&w='+encodeURIComponent(raw),
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-    }
-    return await BaseTranslate('爱词霸翻译',raw,options,res=>JSON.parse(res).content.out)
-}
-
-//--爱词霸翻译--end
-
-
-//--必应翻译--start
-
-async function translate_biying(raw){
-    const options = {
-        method:"POST",
-        url:'https://cn.bing.com/ttranslatev3',
-        data:'fromLang=auto-detect&to=zh-Hans&text='+encodeURIComponent(raw),
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-    }
-    return await BaseTranslate('必应翻译',raw,options,res=>JSON.parse(res)[0].translations[0].text)
-}
-
-//--必应翻译--end
-
-//--有道翻译--start
-
-async function translate_youdao_startup(){
-    if(sessionStorage.getItem('youdao_key'))return;
-    const options = {
-        method:'GET',
-        url:'http://fanyi.youdao.com',
-    }
-    const res = await Request(options);
-    options.url = res.responseText.match(/http.*?fanyi.min.js/g)[0];
-    const js_res = await Request(options);
-    sessionStorage.setItem('youdao_key',/"fanyideskweb"[+a-z]{5}"(.*?)"/.exec(js_res.responseText)[1]);
-}
-
-async function translate_youdao(raw){
-    const ts=""+(new Date).getTime(),salt=ts+parseInt(10 * Math.random(), 10);
-    const result=[
-        'i='+encodeURIComponent(raw),
-        'salt='+salt,
-        'sign='+CryptoJS.MD5("fanyideskweb"+raw+salt+sessionStorage.getItem('youdao_key')),
-        'ts='+ts,
-        'doctype=json&version=2.1&keyfrom=fanyi.web&action=FY_BY_REALTlME&typoResult=false&from=AUTO&to=AUTO&smartresult=dict&client=fanyideskweb'
-    ].join('&')
-    const options = {
-        method:"POST",
-        url:'http://fanyi.youdao.com/translate_o?smartresult=dict&smartresult=rule',
-        data:result,
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-            "Referer": "http://fanyi.youdao.com/",
-            "User-Agent": "test",
-        },
-    }
-    return await BaseTranslate('有道翻译',raw,options,res=>JSON.parse(res).translateResult.map(e=>e.map(t=>t.tgt).join('')).join('\n'))
-}
-
-//--有道翻译--end
-
-//--有道翻译m--start
-async function translate_youdao_mobile(raw){
-    const options = {
-        method:"POST",
-        url:'http://m.youdao.com/translate',
-        data:"inputtext="+encodeURIComponent(raw)+"&type=AUTO",
-        anonymous:true,
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-        }
-    }
-    return await BaseTranslate('有道翻译mobile',raw,options,res=>/id="translateResult">\s*?<li>([\s\S]*?)<\/li>\s*?<\/ul/.exec(res)[1])
-}
-//--有道翻译m--end
-
 //--腾讯翻译--start
 
 async function translate_tencent_startup(){
@@ -687,87 +547,6 @@ async function translate_tencent(raw){
 }
 
 //--腾讯翻译--end
-
-//--彩云翻译--start
-
-async function translate_caiyun_startup(){
-    if(sessionStorage.getItem('caiyun_id') && sessionStorage.getItem('caiyun_jwt'))return;
-    const browser_id=CryptoJS.MD5(Math.random().toString()).toString();
-    sessionStorage.setItem('caiyun_id',browser_id);
-    const options= {
-        method:"POST",
-        url:'https://api.interpreter.caiyunai.com/v1/user/jwt/generate',
-        headers:{
-            "Content-Type": "application/json",
-            "X-Authorization": "token:qgemv4jr1y38jyq6vhvi",
-        },
-        data:JSON.stringify({browser_id}),
-    }
-    const res = await Request(options);
-    sessionStorage.setItem('caiyun_jwt',JSON.parse(res.responseText).jwt);
-}
-
-async function translate_caiyun(raw){
-    const source="NOPQRSTUVWXYZABCDEFGHIJKLMnopqrstuvwxyzabcdefghijklm";
-    const dic=[..."ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"].reduce((dic,current,index)=>{dic[current]=source[index];return dic},{});
-    const decoder = line => Base64.decode([...line].map(i=>dic[i]||i).join(""))
-    const options = {
-        method:"POST",
-        url:'https://api.interpreter.caiyunai.com/v1/translator',
-        data:JSON.stringify({
-            "source":raw.split('\n'),
-            "trans_type": "auto2zh",
-            "detect": true,
-            "browser_id": sessionStorage.getItem('caiyun_id')
-        }),
-        headers: {
-            "X-Authorization": "token:qgemv4jr1y38jyq6vhvi",
-            "T-Authorization": sessionStorage.getItem('caiyun_jwt')
-        }
-    }
-    return await BaseTranslate('彩云小译',raw,options,res=>JSON.parse(res).target.map(decoder).join('\n'))
-}
-
-//--彩云翻译--end
-
-//--papago翻译--start
-
-async function translate_papago_startup(){
-    if(sessionStorage.getItem('papago_key'))return;
-    const base_options = {
-        method: 'GET',
-        url: 'https://papago.naver.com/',
-        anonymous:true,
-    }
-    const base_res = await Request(base_options)
-    const uri = /"\/(home\..*?.chunk.js)"/.exec(base_res.responseText)[1]
-    const options = {
-        method:'GET',
-        url:'https://papago.naver.com/'+uri
-    }
-    const res = await Request(options);
-    const key = /AUTH_KEY:"(.*?)"/.exec(res.responseText)[1];
-    sessionStorage.setItem('papago_key',key);
-}
-
-async function translate_papago(raw){
-    const time= Date.now();
-    const options = {
-        method:'POST',
-        url:'https://papago.naver.com/apis/n2mt/translate',
-        data:`deviceId=${time}&source=auto&target=zh-CN&text=${encodeURIComponent(raw)}`,
-        headers:{
-            "authorization":'PPG '+time+':'+CryptoJS.HmacMD5(time+'\nhttps://papago.naver.com/apis/n2mt/translate\n'+time, sessionStorage.getItem('papago_key')).toString(CryptoJS.enc.Base64),
-            "x-apigw-partnerid":"papago",
-            "device-type":'pc',
-            "timestamp":time,
-            "Content-Type": "application/x-www-form-urlencoded",
-        }
-    }
-    return await BaseTranslate('Papago',raw,options,res=>JSON.parse(res).translatedText)
-}
-
-//--papago翻译--end
 
 //--异步请求包装工具--start
 
