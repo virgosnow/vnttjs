@@ -396,14 +396,13 @@ async function translate_mirai(raw,lang){
     if(!lang){
         lang = await check_lang(raw)
     }
-    //const token = sessionStorage.getItem('mirai_tran');//get token
     const tran = sessionStorage.getItem('mirai_tran')
-    const data = '{"input":"'+raw+'","source":"ja","target":"zh","profile":"inmt","filter_profile":"nmt","tran":"'+tran+'","InmtTarget":"","InmtTranslateType":"gisting","usePrefix":false,"adaptPhrases":[],"zt":false}'
+    const data = '{"input":"'+raw.replace(/\n/g,'\\n')+'","source":"ja","target":"zh","profile":"inmt","filter_profile":"nmt","tran":"'+tran+'","InmtTarget":"","InmtTranslateType":"gisting","usePrefix":false,"adaptPhrases":[],"zt":false}'
+    console.log(data)
     const options = {
         method:"POST",
         url:'https://trial.miraitranslate.com/trial/api/translate.php',
         data:data,
-        //cookie:'translate_session=cfqjro2lqpaskvjgigi70nl5t4',
         headers: {
             "Content-Type": 'application/json',
         },
