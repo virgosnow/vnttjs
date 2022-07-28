@@ -2,7 +2,7 @@
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
 // @version      0.2
-// @description  try to take over the world!
+// @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/*
 // @connect      fanyi.baidu.com
