@@ -39,29 +39,18 @@ const [enable_pass_lang,remove_url,show_info]=Object.keys(baseoptions).map(key=>
 const globalProcessingSave=[];
 
 function initPanel(){
-    let choice=GM_getValue('translate_choice','百度翻译');
+    let choice=GM_getValue('translate_choice','Mirai翻译');
     let select=document.createElement("select");
     select.className='js_translate';
-    select.style='height:35px;width:100px;background-color:#fff;border-radius:17.5px;text-align-last:center;color:#000000;margin:5px 0';
+    select.style='height:35px;width:100px;background-color:#fff;border-radius:17.5px;text-align-last:center;color:#000000;margin:5px 0'
     select.onchange=()=>{
-        GM_setValue('translate_choice',select.value);
+        GM_setValue('translate_choice',select.value)
         title.innerText="控制面板（请刷新以应用）"
     };
     for(let i in transdict)select.innerHTML+='<option value="'+i+'">'+i+'</option>';
     //
-    let enable_details = document.createElement('details');
-    /*
-    enable_details.innerHTML+="<summary>支持网站</summary>"
-    for(let i in rules){
-        let temp=document.createElement('input');
-        temp.type='checkbox';
-        temp.name=i;
-        if(GM_getValue("enable_rule:"+temp.name,true))temp.setAttribute('checked',true)
-        enable_details.appendChild(temp);
-        enable_details.innerHTML+="<span>"+i+"</span><br>";
-    }
-    */
-    let mask=document.createElement('div'),dialog=document.createElement("div"),js_dialog=document.createElement("div"),title=document.createElement('p');
+    let enable_details = document.createElement('details')
+    let mask=document.createElement('div'),dialog=document.createElement("div"),js_dialog=document.createElement("div"),title=document.createElement('p')
     //
     window.top.document.body.appendChild(mask);
     dialog.appendChild(js_dialog);
