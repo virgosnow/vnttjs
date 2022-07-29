@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.3
+// @version      0.4
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
-// @match        https://a.vntt.app/*
+// @match        https://a.vntt.app/project*
 // @connect      miraitranslate.com
 // @connect      fanyi.baidu.com
 // @connect      translate.google.com
@@ -134,8 +134,6 @@ const rules={
             }
         }
     };
-    // 翻译项目的角色和术语库
-    const projectCodeName = document.getElementById("project_codename").value
     // 翻译时才启动
     document.querySelectorAll('tr.find-row').forEach(element => {
         const edit = element.getElementsByClassName('editable-click')[0]
@@ -144,25 +142,41 @@ const rules={
             mutations.forEach(function(mutation) {
                 if (mutation.type == "attributes") {
                     if (edit.style.display === "none") {
-                        const glossary = new Map(Object.entries(JSON.parse(sessionStorage.getItem(projectCodeName + ".zh.meta_glossary"))))
-                        const character = new Map(Object.entries(JSON.parse(sessionStorage.getItem(projectCodeName + ".zh.meta_character"))))
+                        // 翻译项目的角色和术语库
+                        const projectCodeName = document.getElementById("project_codename").value
+                        let glossary = new Map()
+                        let character = new Map()
+                        const meta_glossary = sessionStorage.getItem(projectCodeName + ".zh.meta_glossary")
+                        if (meta_glossary !== '') {
+                            glossary = new Map(Object.entries(JSON.parse(meta_glossary)))
+                        }
+                        const meta_character = sessionStorage.getItem(projectCodeName + ".zh.meta_character")
+                        if (meta_character !== '') {
+                            character = new Map(Object.entries(JSON.parse(meta_character)))
+                        }
+                        // 文本类
                         const jpText = ToCDB(element.getElementsByClassName('original')[0].innerText)
                         const chText = GetMemText(jpText, '')
                         const editArea = element.getElementsByClassName('translation-area')[0]
                         const submit = element.getElementsByClassName('editable-submit')[0]
                         // 有翻译记忆采用翻译记忆
                         // 无翻译记忆开启机翻
-                        if ( chText !== '' ) {
-                            editArea.value = chText
+                        if (chText !== '') {
+                            sleep(50).then(() => {editArea.value = chText});
                             if (edit.innerText === "Empty") {
                                 sleep(50).then(() => {submit.click()});
                             }
-                        } else {
+                        }
+                        if (chText === '' || edit.innerText !== "Empty"){
                             const choice = GM_getValue('translate_choice','Mirai翻译')
                             if (choice != '关闭翻译') {
                                 PromiseRetryWrap(startup[choice]).then(()=>{document.js_translater=setInterval(mtFunc(element),20)});
                             }
                         }
+                        // 保存翻译记忆
+                        editArea.addEventListener('blur', function (e) {
+                            SetMemText(jpText, editArea.value)
+                        })
                         // 加复制原文按钮
                         let copyBtn = document.createElement('button')
                         copyBtn.type = 'button'
@@ -218,22 +232,12 @@ const rules={
                         if ( has ) {
                             window.scrollBy(0, 40)
                         }
-                        // 翻译记忆
-                        submit.addEventListener('click',(e)=>{
-                            SetMemText(jpText, editArea.value)
-                        })
-                        editArea.addEventListener('keydown', function (e) {
-                            if (e.key === 'Enter') {
-                                SetMemText(jpText, editArea.value)
-                            }
-                        })
                     } else {
                         element.querySelectorAll('span.mt-split, span.mt-text').forEach(element => {
                             element.style.display = "none"
                         })
                     }
                 }
-
             })
         })
         observer.observe(edit, {
@@ -397,11 +401,23 @@ async function translate_mirai(raw,lang){
         lang = await check_lang(raw)
     }
     const tran = sessionStorage.getItem('mirai_tran')
-    const data = '{"input":"'+raw.replace(/\n/g,'\\n')+'","source":"ja","target":"zh","profile":"inmt","filter_profile":"nmt","tran":"'+tran+'","InmtTarget":"","InmtTranslateType":"gisting","usePrefix":false,"adaptPhrases":[],"zt":false}'
+    const jsonData = {
+        input: raw,
+        source: "ja",
+        target: "zh",
+        profile: "inmt",
+        filter_profile: "nmt",
+        tran: tran,
+        InmtTarget: "",
+        InmtTranslateType: "gisting",
+        usePrefix: false,
+        adaptPhrases: [],
+        zt: false
+    }
     const options = {
         method:"POST",
         url:'https://trial.miraitranslate.com/trial/api/translate.php',
-        data:data,
+        data:JSON.stringify(jsonData),
         headers: {
             "Content-Type": 'application/json',
         },
