@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.4
+// @version      0.45
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -17,33 +17,28 @@
 const transdict={'Mirai翻译':translate_mirai,'谷歌翻译':translate_gg,'腾讯翻译':translate_tencent,'百度翻译':translate_baidu,'关闭翻译':()=>{}};
 const startup={'Mirai翻译':translate_mirai_startup,'腾讯翻译':translate_tencent_startup,'百度翻译':translate_baidu_startup};
 const baseoptions = {
-    'enable_pass_lang': {
-        declare: '不翻译中文',
-        default_value: false,
-        change_func: self => {
-            if (self.checked) sessionStorage.clear()
-        }
-    },
     'show_info': {
         declare: '显示翻译源',
         default_value: true,
     }
 };
 
-const [enable_pass_lang,show_info]=Object.keys(baseoptions).map(key=>GM_getValue(key,baseoptions[key].default_value));
+const [show_info]=Object.keys(baseoptions).map(key=>GM_getValue(key,baseoptions[key].default_value));
 
 const globalProcessingSave=[];
 
 function initPanel(){
+    // 翻译选项
     let choice=GM_getValue('translate_choice','Mirai翻译');
     let select=document.createElement("select");
     select.className='js_translate';
     select.style='height:35px;width:100px;background-color:#fff;border-radius:17.5px;text-align-last:center;color:#000000;margin:5px 0'
     select.onchange=()=>{
         GM_setValue('translate_choice',select.value)
-        title.innerText="控制面板（请刷新以应用）"
     };
-    for(let i in transdict)select.innerHTML+='<option value="'+i+'">'+i+'</option>';
+    for(let i in transdict){
+        select.innerHTML+='<option value="'+i+'">'+i+'</option>'
+    }
     //
     let enable_details = document.createElement('details')
     let mask=document.createElement('div'),dialog=document.createElement("div"),js_dialog=document.createElement("div"),title=document.createElement('p')
@@ -131,26 +126,27 @@ const rules={
     };
     // 翻译时才启动
     document.querySelectorAll('tr.find-row').forEach(element => {
+        const ori = element.getElementsByClassName('original')[0]
         const edit = element.getElementsByClassName('editable-click')[0]
         let MutationObserver = window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserver;
         let observer = new MutationObserver(function(mutations) {
             mutations.forEach(function(mutation) {
-                if (mutation.type == "attributes") {
+                if (mutation.type === "attributes") {
                     if (edit.style.display === "none") {
                         // 翻译项目的角色和术语库
                         const projectCodeName = document.getElementById("project_codename").value
                         let glossary = new Map()
                         let character = new Map()
                         const meta_glossary = sessionStorage.getItem(projectCodeName + ".zh.meta_glossary")
-                        if (meta_glossary !== '') {
+                        if (meta_glossary !== null) {
                             glossary = new Map(Object.entries(JSON.parse(meta_glossary)))
                         }
                         const meta_character = sessionStorage.getItem(projectCodeName + ".zh.meta_character")
-                        if (meta_character !== '') {
+                        if (meta_character !== null) {
                             character = new Map(Object.entries(JSON.parse(meta_character)))
                         }
                         // 文本类
-                        const jpText = ToCDB(element.getElementsByClassName('original')[0].innerText)
+                        const jpText = ToCDB(ori.innerText)
                         const chText = GetMemText(jpText, '')
                         const editArea = element.getElementsByClassName('translation-area')[0]
                         const submit = element.getElementsByClassName('editable-submit')[0]
@@ -168,10 +164,6 @@ const rules={
                                 PromiseRetryWrap(startup[choice]).then(()=>{document.js_translater=setInterval(mtFunc(element),20)});
                             }
                         }
-                        // 保存翻译记忆
-                        editArea.addEventListener('blur', function (e) {
-                            SetMemText(jpText, editArea.value)
-                        })
                         // 加复制原文按钮
                         let copyBtn = document.createElement('button')
                         copyBtn.type = 'button'
@@ -228,9 +220,12 @@ const rules={
                             window.scrollBy(0, 40)
                         }
                     } else {
+                        // 关闭机翻显示
                         element.querySelectorAll('span.mt-split, span.mt-text').forEach(element => {
                             element.style.display = "none"
                         })
+                        // 保存翻译记忆
+                        SetMemText(ori.innerText, edit.innerText)
                     }
                 }
             })
@@ -247,9 +242,9 @@ const rules={
 
 String.prototype.trim = function (char, type) {
     if (char) {
-        if (type == "left") {
+        if (type === "left") {
             return this.replace(new RegExp("^"+char+"+", "g"), "");
-        } else if (type == "right") {
+        } else if (type === "right") {
             return this.replace(new RegExp(""+char+"+$", "g"), "");
         }
         return this.replace(new RegExp("^"+char+"+|"+char+"+$", "g"), "");
@@ -282,19 +277,22 @@ function insertText(obj,str) {
 
 
 function SetMemText(jpText,chText) {
-    jpText = ToCDB(jpText).replace( /[\x20-\x7e]+/g,'【码】')
-    chText = chText.replace( /[\x20-\x7e]+/g,'【码】')
-    GM_setValue(jpText, chText)
+    if (chText === '' || chText === 'Empty') {
+        return
+    }
+    GM_setValue(ToCDB(jpText), ToCDB(chText))
 }
 
 function GetMemText(jpText) {
-    jpText = ToCDB(jpText)
-    let mmText = GM_getValue(jpText.replace( /[\x20-\x7e]+/g,'【码】'), '')
-    if (mmText == '') {
+    let mmText = GM_getValue(ToCDB(jpText), '')
+    if (mmText === '') {
         return ''
     }
-    let words = mmText.replace( /[\x20-\x7e]+/g,'【码】').split('【码】')
-    let codes = jpText.replace( /[^\x20-\x7e]+/g,'【文】').trim('【文】').split('【文】')
+    let words = mmText.split(/[\x20-\x7e]+/g)
+    let codes = jpText.match(/[\x20-\x7e]+/g)
+    if (codes === null || words.length-1 > codes.length) {
+        return mmText
+    }
     let chText = words[0]
     for (let i = 1; i < words.length; i++) {
         if (i-1 < codes.length) {
