@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.4
+// @version      0.45
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -131,7 +131,7 @@ const rules={
         let MutationObserver = window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserver;
         let observer = new MutationObserver(function(mutations) {
             mutations.forEach(function(mutation) {
-                if (mutation.type == "attributes") {
+                if (mutation.type === "attributes") {
                     if (edit.style.display === "none") {
                         // 翻译项目的角色和术语库
                         const projectCodeName = document.getElementById("project_codename").value
@@ -242,9 +242,9 @@ const rules={
 
 String.prototype.trim = function (char, type) {
     if (char) {
-        if (type == "left") {
+        if (type === "left") {
             return this.replace(new RegExp("^"+char+"+", "g"), "");
-        } else if (type == "right") {
+        } else if (type === "right") {
             return this.replace(new RegExp(""+char+"+$", "g"), "");
         }
         return this.replace(new RegExp("^"+char+"+|"+char+"+$", "g"), "");
@@ -277,7 +277,7 @@ function insertText(obj,str) {
 
 
 function SetMemText(jpText,chText) {
-    if (chText == '' || chText == 'Empty') {
+    if (chText === '' || chText === 'Empty') {
         return
     }
     GM_setValue(ToCDB(jpText), ToCDB(chText))
@@ -285,7 +285,7 @@ function SetMemText(jpText,chText) {
 
 function GetMemText(jpText) {
     let mmText = GM_getValue(ToCDB(jpText), '')
-    if (mmText == '') {
+    if (mmText === '') {
         return ''
     }
     let words = mmText.split(/[\x20-\x7e]+/g)
