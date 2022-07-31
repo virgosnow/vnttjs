@@ -24,17 +24,13 @@ const baseoptions = {
             if (self.checked) sessionStorage.clear()
         }
     },
-    'remove_url': {
-        declare: '自动过滤url',
-        default_value: true,
-    },
     'show_info': {
         declare: '显示翻译源',
         default_value: true,
     }
 };
 
-const [enable_pass_lang,remove_url,show_info]=Object.keys(baseoptions).map(key=>GM_getValue(key,baseoptions[key].default_value));
+const [enable_pass_lang,show_info]=Object.keys(baseoptions).map(key=>GM_getValue(key,baseoptions[key].default_value));
 
 const globalProcessingSave=[];
 
@@ -109,7 +105,6 @@ const rules={
 (function() {
     'use strict';
     const GetActiveRule = ()=>Object.entries(rules).filter(([key])=>GM_getValue("enable_rule:"+key,true)).map(([_,group])=>group).flat().find(item=>item.matcher.test(document.location.href));
-    let url=document.location.href;
     let rule=GetActiveRule();
     console.log(`【VNTT翻译辅助】启动`);
     let mtFunc = e=>{
@@ -298,14 +293,14 @@ function GetMemText(jpText) {
     if (mmText == '') {
         return ''
     }
-    let chText = ''
     let words = mmText.replace( /[\x20-\x7e]+/g,'【码】').split('【码】')
     let codes = jpText.replace( /[^\x20-\x7e]+/g,'【文】').trim('【文】').split('【文】')
-    for (let i = 0; i < words.length; i++) {
-        chText+=words[i]
-        if (i < codes.length) {
-            chText+=codes[i]
+    let chText = words[0]
+    for (let i = 1; i < words.length; i++) {
+        if (i-1 < codes.length) {
+            chText+=codes[i-1]
         }
+        chText+=words[i]
     }
     return chText
 }
@@ -374,10 +369,6 @@ function baseTextSetter(e,name,text){//change element text
     }
 }
 
-function url_filter(text){
-    return text.replace(/(https?|ftp|file):\/\/[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]/g,'');
-}
-
 async function check_lang(raw){
     // 短句子会被初判为中文 先直接返回jp
     return "jp"
@@ -397,9 +388,6 @@ async function translate_mirai_startup(){
 }
 
 async function translate_mirai(raw,lang){
-    if(!lang){
-        lang = await check_lang(raw)
-    }
     const tran = sessionStorage.getItem('mirai_tran')
     const jsonData = {
         input: raw,
