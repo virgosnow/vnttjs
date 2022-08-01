@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.45
+// @version      0.46
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -87,43 +87,9 @@ function initPanel(){
     window.top.document.querySelector('.js_translate option[value='+choice+']').selected=true;
 }
 
-const rules={
-    'vntt':[{
-        name:'VNTT',
-        matcher:/https:\/\/[a-zA-Z.]*?vntt\.app/,
-        selector:e=>{return baseSelector(e, 'div[class="original"]')},
-        textGetter:baseTextGetter,
-        textSetter:baseTextSetter
-    }]
-};
-
 (function() {
     'use strict';
-    const GetActiveRule = ()=>Object.entries(rules).filter(([key])=>GM_getValue("enable_rule:"+key,true)).map(([_,group])=>group).flat().find(item=>item.matcher.test(document.location.href));
-    let rule=GetActiveRule();
     console.log(`【VNTT翻译辅助】启动`);
-    let mtFunc = e=>{
-        if(!rule)return;
-        const choice=GM_getValue('translate_choice','Mirai翻译');
-        // const temp=[...new Set(rule.selector(e))];
-        let temp = rule.selector(e)
-        for(let i=0;i<temp.length;i++){
-            const now=temp[i];
-            if(globalProcessingSave.includes(now))continue;
-            globalProcessingSave.push(now);
-            const text = rule.textGetter(now);
-            if(text.length==0)continue;
-            if(sessionStorage.getItem(choice+'-'+text)){
-                rule.textSetter(now,choice,sessionStorage.getItem(choice+'-'+text));
-                removeItem(globalProcessingSave,now)
-            }else{
-                check_lang(text).then(lang=>transdict[choice](text,lang)).then(s=>{
-                    rule.textSetter(now,choice,s);
-                    removeItem(globalProcessingSave,now);
-                })
-            }
-        }
-    };
     // 翻译时才启动
     document.querySelectorAll('tr.find-row').forEach(element => {
         const ori = element.getElementsByClassName('original')[0]
@@ -161,7 +127,14 @@ const rules={
                         if (chText === '' || edit.innerText !== "Empty"){
                             const choice = GM_getValue('translate_choice','Mirai翻译')
                             if (choice != '关闭翻译') {
-                                PromiseRetryWrap(startup[choice]).then(()=>{document.js_translater=setInterval(mtFunc(element),20)});
+                                PromiseRetryWrap(startup[choice]).then(()=>{
+                                    // 开始翻译
+                                    if (sessionStorage.getItem(choice+'-'+jpText)) {
+                                        baseTextSetter(ori,choice,sessionStorage.getItem(choice+'-'+jpText))
+                                    } else {
+                                        transdict[choice](jpText).then(s=>{baseTextSetter(ori,choice,s)})
+                                    }
+                                })
                             }
                         }
                         // 加复制原文按钮
@@ -472,17 +445,14 @@ async function translate_baidu_startup(){
     sessionStorage.setItem('baidu_gtk',/window\.gtk = "(.*?)"/.exec(res.responseText)[1])
 }
 
-async function translate_baidu(raw,lang){
-    if(!lang){
-        lang = await check_lang(raw)
-    }
+async function translate_baidu(raw){
     const processed_raw = raw.length>30?(raw.substr(0,10)+raw.substr(~~(raw.length/2)-5,10)+raw.substr(-10)):raw;//process
     const tk_key = sessionStorage.getItem('baidu_gtk');
     const token = sessionStorage.getItem('baidu_token');//get token
     const options = {
         method:"POST",
         url:'https://fanyi.baidu.com/v2transapi',
-        data:'from='+lang+'&to=zh&query='+encodeURIComponent(raw)+'&simple_means_flag=3&sign='+tk(processed_raw,tk_key)+"&token="+token+"&domain=common",
+        data:'from=auto&to=zh&query='+encodeURIComponent(raw)+'&simple_means_flag=3&sign='+tk(processed_raw,tk_key)+"&token="+token+"&domain=common",
         headers: {
             "referer": 'https://fanyi.baidu.com',
             "Content-Type": 'application/x-www-form-urlencoded; charset=UTF-8',
