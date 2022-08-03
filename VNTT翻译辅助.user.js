@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.46
+// @version      0.47
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -24,8 +24,6 @@ const baseoptions = {
 };
 
 const [show_info]=Object.keys(baseoptions).map(key=>GM_getValue(key,baseoptions[key].default_value));
-
-const globalProcessingSave=[];
 
 function initPanel(){
     // 翻译选项
@@ -381,7 +379,15 @@ async function translate_mirai(raw,lang){
             "Content-Type": 'application/json',
         },
     }
-    return await BaseTranslate('Mirai翻译',raw,options,res=>JSON.parse(res).outputs[0].output[0].translation)
+    return await BaseTranslate('Mirai翻译',raw,options,translate_mirai_post)
+}
+
+function translate_mirai_post(res){
+    let tran = JSON.parse(res).outputs[0].output[0].translation
+    tran = tran.replace(/^“/, "「")
+    tran = tran.replace(/”$/, "」")
+    tran = tran.replace(/\.\.\.+/g, "……")
+    return tran
 }
 //--Mirai翻译--end
 
