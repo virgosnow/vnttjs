@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.47
+// @version      0.48
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -251,17 +251,23 @@ function SetMemText(jpText,chText) {
     if (chText === '' || chText === 'Empty') {
         return
     }
+    const regex = /[\x20-\x7e]+/g
     GM_setValue(ToCDB(jpText), ToCDB(chText))
+    let codes = jpText.match(regex)
+    if (!codes) {
+        GM_setValue(ToCDB(jpText).replace(regex,''), ToCDB(chText))
+    }
 }
 
 function GetMemText(jpText) {
-    let mmText = GM_getValue(ToCDB(jpText), '')
-    if (mmText === '') {
-        return ''
+    const regex = /[\x20-\x7e]+/g
+    let codes = jpText.match(regex)
+    if (!codes) {
+        return GM_getValue(ToCDB(jpText), '')
     }
-    let words = mmText.split(/[\x20-\x7e]+/g)
-    let codes = jpText.match(/[\x20-\x7e]+/g)
-    if (codes === null || words.length-1 > codes.length) {
+    let mmText = GM_getValue(ToCDB(jpText).replace(regex,''), '')
+    let words = mmText.split(regex)
+    if (words.length-1 > codes.length) {
         return mmText
     }
     let chText = words[0]
@@ -274,9 +280,10 @@ function GetMemText(jpText) {
     return chText
 }
 
-function GetCodes(str) {
-    let arr = str.replace( /[^\x20-\x7e]+/g,'【文】').trim('【文】').split('【文】')
-    return arr.filter(function(item, index, arr) {
+function GetCodes(jpText) {
+    const regex = /[\x20-\x7e]+/g
+    let codes = jpText.match(regex)
+    return codes.filter(function(item, index, arr) {
         // 元素长度等于1 不会是代码 忽略
         if ( item.length <= 1 ) {
             return false
