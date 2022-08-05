@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.48
+// @version      0.50
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -97,6 +97,11 @@ function initPanel(){
             mutations.forEach(function(mutation) {
                 if (mutation.type === "attributes") {
                     if (edit.style.display === "none") {
+                        // 文本类
+                        const jpText = ToCDB(ori.innerText)
+                        const chText = GetMemText(jpText, '')
+                        const editArea = element.getElementsByClassName('translation-area')[0]
+                        const submit = element.getElementsByClassName('editable-submit')[0]
                         // 翻译项目的角色和术语库
                         const projectCodeName = document.getElementById("project_codename").value
                         let glossary = new Map()
@@ -109,32 +114,20 @@ function initPanel(){
                         if (meta_character !== null) {
                             character = new Map(Object.entries(JSON.parse(meta_character)))
                         }
-                        // 文本类
-                        const jpText = ToCDB(ori.innerText)
-                        const chText = GetMemText(jpText, '')
-                        const editArea = element.getElementsByClassName('translation-area')[0]
-                        const submit = element.getElementsByClassName('editable-submit')[0]
-                        // 有翻译记忆采用翻译记忆
-                        // 无翻译记忆开启机翻
-                        if (chText !== '') {
-                            sleep(50).then(() => {editArea.value = chText});
-                            if (edit.innerText === "Empty") {
-                                sleep(50).then(() => {submit.click()});
+                        let words = new Map()
+                        let phrases = new Map()
+                        glossary.forEach(function(value,key){
+                            if (jpText.includes(key)) {
+                                words.set(key, value)
+                                phrases.set(key, value)
                             }
-                        }
-                        if (chText === '' || edit.innerText !== "Empty"){
-                            const choice = GM_getValue('translate_choice','Mirai翻译')
-                            if (choice != '关闭翻译') {
-                                PromiseRetryWrap(startup[choice]).then(()=>{
-                                    // 开始翻译
-                                    if (sessionStorage.getItem(choice+'-'+jpText)) {
-                                        baseTextSetter(ori,choice,sessionStorage.getItem(choice+'-'+jpText))
-                                    } else {
-                                        transdict[choice](jpText).then(s=>{baseTextSetter(ori,choice,s)})
-                                    }
-                                })
+                        })
+                        character.forEach(function(value,key){
+                            if (jpText.includes(key)) {
+                                words.set(key, value)
+                                phrases.set(key, value)
                             }
-                        }
+                        })
                         // 加复制原文按钮
                         let copyBtn = document.createElement('button')
                         copyBtn.type = 'button'
@@ -157,20 +150,9 @@ function initPanel(){
                         })
                         element.getElementsByClassName('editable-submit')[0].before(copyMTBtn)
                         // 加术语和代码块按钮
-                        let words = new Map()
-                        glossary.forEach(function(value,key){
-                            if (jpText.includes(key)) {
-                                words.set(value, key)
-                            }
-                        })
-                        character.forEach(function(value,key){
-                            if (jpText.includes(key)) {
-                                words.set(value, key)
-                            }
-                        })
                         GetCodes(jpText).forEach(function(value,key){
                             if (value !== "") {
-                                words.set(value, "代码")
+                                words.set(value, value)
                             }
                         })
                         let has = false
@@ -179,8 +161,8 @@ function initPanel(){
                             let codeCopyBtn = document.createElement('button')
                             codeCopyBtn.type = 'button'
                             codeCopyBtn.className = 'btn btn-primary btn-sm'
-                            codeCopyBtn.title = value
-                            codeCopyBtn.innerHTML = key;
+                            codeCopyBtn.title = key
+                            codeCopyBtn.innerHTML = value
                             codeCopyBtn.style = 'padding: 1px 6px; font-size: 14px; background-color: #6c757d; border-color: #6c757d; margin: 4px 4px; margin-left: 0px'
                             codeCopyBtn.addEventListener('click',()=>{
                                 insertText(element.getElementsByClassName('translation-area')[0], codeCopyBtn.innerHTML)
@@ -189,6 +171,27 @@ function initPanel(){
                         })
                         if ( has ) {
                             window.scrollBy(0, 40)
+                        }
+                        // 有翻译记忆采用翻译记忆
+                        // 无翻译记忆开启机翻
+                        if (chText !== '') {
+                            sleep(50).then(() => {editArea.value = chText});
+                            if (edit.innerText === "Empty") {
+                                sleep(50).then(() => {submit.click()});
+                            }
+                        }
+                        if (chText === '' || edit.innerText !== "Empty"){
+                            const choice = GM_getValue('translate_choice','Mirai翻译')
+                            if (choice != '关闭翻译') {
+                                PromiseRetryWrap(startup[choice]).then(()=>{
+                                    // 开始翻译
+                                    if (sessionStorage.getItem(choice+'-'+jpText)) {
+                                        baseTextSetter(ori,choice,sessionStorage.getItem(choice+'-'+jpText))
+                                    } else {
+                                        transdict[choice](jpText,phrases).then(s=>{baseTextSetter(ori,choice,s)})
+                                    }
+                                })
+                            }
                         }
                     } else {
                         // 关闭机翻显示
@@ -283,6 +286,9 @@ function GetMemText(jpText) {
 function GetCodes(jpText) {
     const regex = /[\x20-\x7e]+/g
     let codes = jpText.match(regex)
+    if (!codes) {
+        return []
+    }
     return codes.filter(function(item, index, arr) {
         // 元素长度等于1 不会是代码 忽略
         if ( item.length <= 1 ) {
@@ -363,7 +369,14 @@ async function translate_mirai_startup(){
     sessionStorage.setItem('mirai_tran',/tran = "(.*?)"/.exec(res.responseText)[1])
 }
 
-async function translate_mirai(raw,lang){
+async function translate_mirai(raw, phrases){
+    let adaptPhrases = []
+    phrases.forEach(function(value,key){
+        adaptPhrases.push({
+            source: key,
+            target: value
+        })
+    })
     const tran = sessionStorage.getItem('mirai_tran')
     const jsonData = {
         input: raw,
@@ -375,7 +388,7 @@ async function translate_mirai(raw,lang){
         InmtTarget: "",
         InmtTranslateType: "gisting",
         usePrefix: false,
-        adaptPhrases: [],
+        adaptPhrases: adaptPhrases,
         zt: false
     }
     const options = {
@@ -391,6 +404,9 @@ async function translate_mirai(raw,lang){
 
 function translate_mirai_post(res){
     let tran = JSON.parse(res).outputs[0].output[0].translation
+    tran = tran.replace(/ /g, "")
+    tran = tran.replace(/\!/g, "！")
+    tran = tran.replace(/\?/g, "？")
     tran = tran.replace(/^“/, "「")
     tran = tran.replace(/”$/, "」")
     tran = tran.replace(/\.\.\.+/g, "……")
