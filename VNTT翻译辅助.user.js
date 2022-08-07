@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.50
+// @version      0.51
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -255,24 +255,38 @@ function SetMemText(jpText,chText) {
         return
     }
     const regex = /[\x20-\x7e]+/g
-    GM_setValue(ToCDB(jpText), ToCDB(chText))
+    jpText = ToCDB(jpText)
+    chText = ToCDB(chText)
+    GM_setValue(jpText, chText)
     let codes = jpText.match(regex)
-    if (!codes) {
-        GM_setValue(ToCDB(jpText).replace(regex,''), ToCDB(chText))
+    let jpTextNC = jpText.replace(regex,'')
+    if (codes && jpTextNC !== '') {
+        GM_setValue(jpTextNC, chText)
     }
 }
 
 function GetMemText(jpText) {
     const regex = /[\x20-\x7e]+/g
-    let codes = jpText.match(regex)
-    if (!codes) {
-        return GM_getValue(ToCDB(jpText), '')
-    }
-    let mmText = GM_getValue(ToCDB(jpText).replace(regex,''), '')
-    let words = mmText.split(regex)
-    if (words.length-1 > codes.length) {
+    jpText = ToCDB(jpText)
+    // 有记忆直接返回
+    let mmText = GM_getValue(jpText)
+    if (mmText) {
         return mmText
     }
+    // 去除代码块后为空 说明全是代码 返回原代码
+    let jpTextNC = jpText.replace(regex,'')
+    if (jpTextNC === '') {
+        return jpText
+    }
+    // 匹配去除代码块的文本 匹配不上返回空
+    mmText = GM_getValue(jpTextNC)
+    if (!mmText) {
+        return ''
+    }
+    // 能匹配上说明可以适用代码智能补全
+    let codes = []
+    codes.push(jpText.match(regex))
+    let words = mmText.split(regex)
     let chText = words[0]
     for (let i = 1; i < words.length; i++) {
         if (i-1 < codes.length) {
@@ -350,12 +364,6 @@ function baseTextSetter(e,name,text){//change element text
         e.after(spanNode2);
     }
 }
-
-async function check_lang(raw){
-    // 短句子会被初判为中文 先直接返回jp
-    return "jp"
-}
-
 //--综合工具区--end
 
 //--Mirai翻译--start
