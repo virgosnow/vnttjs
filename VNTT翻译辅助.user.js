@@ -350,6 +350,9 @@ function baseTextSetter(e,name,text){//change element text
     if ( spanNodes.length > 0 ) {
         spanNodes.forEach(element => {
             element.style.display = ""
+            if (element.className === 'mt-text') {
+                element.innerText = text
+            }
         })
     } else {
         const spanNode1 = document.createElement('span');
