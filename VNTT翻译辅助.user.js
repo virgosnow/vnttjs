@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.51
+// @version      0.52
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -150,7 +150,7 @@ function initPanel(){
                         })
                         element.getElementsByClassName('editable-submit')[0].before(copyMTBtn)
                         // 加术语和代码块按钮
-                        GetCodes(jpText).forEach(function(value,key){
+                        GetUniCodes(jpText).forEach(function(value,key){
                             if (value !== "") {
                                 words.set(value, value)
                             }
@@ -176,8 +176,10 @@ function initPanel(){
                         // 无翻译记忆开启机翻
                         if (chText !== '') {
                             sleep(50).then(() => {editArea.value = chText});
-                            if (edit.innerText === "Empty") {
-                                sleep(50).then(() => {submit.click()});
+                            if (GetCodes(jpText).length === GetCodes(chText).length) {
+                                if (edit.innerText === "Empty") {
+                                    sleep(50).then(() => {submit.click()});
+                                }
                             }
                         }
                         if (chText === '' || edit.innerText !== "Empty"){
@@ -284,8 +286,10 @@ function GetMemText(jpText) {
         return ''
     }
     // 能匹配上说明可以适用代码智能补全
-    let codes = []
-    codes.push(jpText.match(regex))
+    let codes = jpText.match(regex)
+    if (!codes) {
+        codes = []
+    }
     let words = mmText.split(regex)
     let chText = words[0]
     for (let i = 1; i < words.length; i++) {
@@ -298,6 +302,15 @@ function GetMemText(jpText) {
 }
 
 function GetCodes(jpText) {
+    const regex = /[\x20-\x7e]+/g
+    let codes = jpText.match(regex)
+    if (!codes) {
+        return []
+    }
+    return codes
+}
+
+function GetUniCodes(jpText) {
     const regex = /[\x20-\x7e]+/g
     let codes = jpText.match(regex)
     if (!codes) {
