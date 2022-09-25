@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.52
+// @version      0.53
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -46,7 +46,6 @@ function initPanel(){
     mask.appendChild(dialog);
     js_dialog.appendChild(title)
     js_dialog.appendChild(document.createElement('p').appendChild(select));
-    // js_dialog.appendChild(document.createElement('p').appendChild(enable_details));
     //
     mask.style="display: none;position: fixed;height: 100vh;width: 100vw;z-index: 99999;top: 0;left: 0;overflow: hidden;background-color: rgba(0,0,0,0.4);justify-content: center;align-items: center;"
     mask.addEventListener('click',event=>{if(event.target===mask)mask.style.display='none'});
@@ -92,6 +91,10 @@ function initPanel(){
     document.querySelectorAll('tr.find-row').forEach(element => {
         const ori = element.getElementsByClassName('original')[0]
         const edit = element.getElementsByClassName('editable-click')[0]
+        // 如果没有编辑框 跳过
+        if (!edit) {
+            return
+        }
         let MutationObserver = window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserver;
         let observer = new MutationObserver(function(mutations) {
             mutations.forEach(function(mutation) {
