@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.53
+// @version      0.54
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -138,9 +138,9 @@ function initPanel(){
                         copyBtn.innerHTML = '复制原文';
                         copyBtn.style = 'margin-right: 7px; background-color: #28a745; border-color: #28a745'
                         copyBtn.addEventListener('click',()=>{
-                            element.getElementsByClassName('translation-area')[0].value = jpText
+                            editArea.value = jpText
                         })
-                        element.getElementsByClassName('editable-submit')[0].before(copyBtn)
+                        submit.before(copyBtn)
                         // 加复制机翻按钮
                         let copyMTBtn = document.createElement('button')
                         copyMTBtn.type = 'button'
@@ -149,9 +149,9 @@ function initPanel(){
                         copyMTBtn.style = 'margin-right: 7px; background-color: #28a745; border-color: #28a745'
                         copyMTBtn.addEventListener('click',()=>{
                             const mtText = ToCDB(element.getElementsByClassName("mt-text")[0].innerText)
-                            element.getElementsByClassName('translation-area')[0].value = mtText
+                            editArea.value = mtText
                         })
-                        element.getElementsByClassName('editable-submit')[0].before(copyMTBtn)
+                        submit.before(copyMTBtn)
                         // 加术语和代码块按钮
                         GetUniCodes(jpText).forEach(function(value,key){
                             if (value !== "") {
@@ -168,13 +168,15 @@ function initPanel(){
                             codeCopyBtn.innerHTML = value
                             codeCopyBtn.style = 'padding: 1px 6px; font-size: 14px; background-color: #6c757d; border-color: #6c757d; margin: 4px 4px; margin-left: 0px'
                             codeCopyBtn.addEventListener('click',()=>{
-                                insertText(element.getElementsByClassName('translation-area')[0], codeCopyBtn.innerHTML)
+                                insertText(editArea, codeCopyBtn.innerHTML)
                             })
-                            element.getElementsByClassName('translation-area')[0].before(codeCopyBtn)
+                            editArea.before(codeCopyBtn)
                         })
                         if ( has ) {
                             window.scrollBy(0, 40)
                         }
+                        // 查询重复语句
+                        find_duplicate(ori.innerText, submit, editArea)
                         // 有翻译记忆采用翻译记忆
                         // 无翻译记忆开启机翻
                         if (chText !== '') {
@@ -384,6 +386,38 @@ function baseTextSetter(e,name,text){//change element text
     }
 }
 //--综合工具区--end
+
+//--查询重复语句--start
+async function find_duplicate(jpText, submit, editArea){
+    const searchUrl = 'https://a.vntt.app/project/hssh-renpy-tl-v3/search/ja/zh?original=true&q='+jpText
+    console.log(searchUrl)
+    const options = {
+        method:'GET',
+        url:searchUrl,
+    }
+    const res = await Request(options);
+    console.log(res.responseText.split('<div class="original">').length)
+    if (length < 3 || editArea.value !== "") {
+        return
+    }
+    // console.log(/(?<=<div class="original">).+(?=<\/div>)/g.exec(res.responseText))
+    const chText = /(?<="Update translation">).+(?=<\/a>)/g.exec(res.responseText)
+    console.log(chText)
+    // 加提示
+    var div = document.createElement("div");
+    div.style.background = "#FFE4E1";
+    div.style.borderRadius = "5px";
+    div.style.color = "black";
+    div.style.padding = "10px";
+    div.style.margin = "2px 0px 8px 0px";
+    div.innerHTML = '同项目下已有以下翻译，是否采用？<a class="duplicate_notify" href="javascript:void(0);">采用该翻译</a> <a href="'+searchUrl+'" target="view_window">打开新窗口统一修改</a><br>----------------------------------------------------------<br>'+chText;
+    editArea.before(div)
+    // 加一个监听
+    div.getElementsByClassName('duplicate_notify')[0].addEventListener('click',()=>{
+        editArea.value = chText
+        submit.click()
+    })
+}
 
 //--Mirai翻译--start
 async function translate_mirai_startup(){
