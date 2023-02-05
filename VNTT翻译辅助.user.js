@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.55
+// @version      0.56
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -397,11 +397,11 @@ async function find_duplicate(jpText, submit, editArea){
     }
     const res = await Request(options);
     const length = res.responseText.split('<div class="original">').length
-    if (length < 3 || editArea.value !== "") {
+    const chText = /(?<="Update translation">).+(?=<\/a>)/g.exec(res.responseText)
+    if (length < 3 || editArea.value !== "" || !chText) {
         return
     }
     // console.log(/(?<=<div class="original">).+(?=<\/div>)/g.exec(res.responseText))
-    const chText = /(?<="Update translation">).+(?=<\/a>)/g.exec(res.responseText)
     console.log(chText)
     // 加提示
     var div = document.createElement("div");
