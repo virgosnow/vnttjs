@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.56
+// @version      0.60
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -14,8 +14,19 @@
 // @grant        GM_getValue
 // ==/UserScript==
 
-const transdict={'Mirai翻译':translate_mirai,'谷歌翻译':translate_gg,'腾讯翻译':translate_tencent,'百度翻译':translate_baidu,'关闭翻译':()=>{}};
-const startup={'Mirai翻译':translate_mirai_startup,'腾讯翻译':translate_tencent_startup,'百度翻译':translate_baidu_startup};
+const transdict = {
+    '百度翻译': translate_baidu,
+    '腾讯翻译': translate_tencent,
+    '谷歌翻译': translate_gg,
+    'みらい翻译': translate_mirai,
+    '关闭翻译': () => {
+    }
+};
+const startup = {
+    '百度翻译': translate_baidu_startup,
+    '腾讯翻译': translate_tencent_startup,
+    'みらい翻译': translate_mirai_startup
+};
 const baseoptions = {
     'show_info': {
         declare: '显示翻译源',
@@ -23,23 +34,24 @@ const baseoptions = {
     }
 };
 
-const [show_info]=Object.keys(baseoptions).map(key=>GM_getValue(key,baseoptions[key].default_value));
+const [show_info] = Object.keys(baseoptions).map(key => GM_getValue(key, baseoptions[key].default_value));
 
-function initPanel(){
+function initPanel() {
     // 翻译选项
-    let choice=GM_getValue('translate_choice','Mirai翻译');
-    let select=document.createElement("select");
-    select.className='js_translate';
-    select.style='height:35px;width:100px;background-color:#fff;border-radius:17.5px;text-align-last:center;color:#000000;margin:5px 0'
-    select.onchange=()=>{
-        GM_setValue('translate_choice',select.value)
+    let choice = GM_getValue('translate_choice', '百度翻译');
+    let select = document.createElement("select");
+    select.className = 'js_translate';
+    select.style = 'height:35px;width:100px;background-color:#fff;border-radius:17.5px;text-align-last:center;color:#000000;margin:5px 0'
+    select.onchange = () => {
+        GM_setValue('translate_choice', select.value)
     };
-    for(let i in transdict){
-        select.innerHTML+='<option value="'+i+'">'+i+'</option>'
+    for (let i in transdict) {
+        select.innerHTML += '<option value="' + i + '">' + i + '</option>'
     }
     //
     let enable_details = document.createElement('details')
-    let mask=document.createElement('div'),dialog=document.createElement("div"),js_dialog=document.createElement("div"),title=document.createElement('p')
+    let mask = document.createElement('div'), dialog = document.createElement("div"),
+        js_dialog = document.createElement("div"), title = document.createElement('p')
     //
     window.top.document.body.appendChild(mask);
     dialog.appendChild(js_dialog);
@@ -47,44 +59,89 @@ function initPanel(){
     js_dialog.appendChild(title)
     js_dialog.appendChild(document.createElement('p').appendChild(select));
     //
-    mask.style="display: none;position: fixed;height: 100vh;width: 100vw;z-index: 99999;top: 0;left: 0;overflow: hidden;background-color: rgba(0,0,0,0.4);justify-content: center;align-items: center;"
-    mask.addEventListener('click',event=>{if(event.target===mask)mask.style.display='none'});
-    dialog.style='padding:0;border-radius:10px;background-color: #fff;box-shadow: 0 0 5px 4px rgba(0,0,0,0.3);';
-    js_dialog.style="min-height:10vh;min-width:10vw;display:flex;flex-direction:column;align-items:center;padding:10px;border-radius:4px;color:#000";
-    title.style='margin:5px 0;font-size:20px;';
-    title.innerText="控制面板";
-    for(let i in baseoptions){
-        let temp=document.createElement('input'),temp_p=document.createElement('p');
+    mask.style = "display: none;position: fixed;height: 100vh;width: 100vw;z-index: 99999;top: 0;left: 0;overflow: hidden;background-color: rgba(0,0,0,0.4);justify-content: center;align-items: center;"
+    mask.addEventListener('click', event => {
+        if (event.target === mask) mask.style.display = 'none'
+    });
+    dialog.style = 'padding:0;border-radius:10px;background-color: #fff;box-shadow: 0 0 5px 4px rgba(0,0,0,0.3);';
+    js_dialog.style = "min-height:10vh;min-width:10vw;display:flex;flex-direction:column;align-items:center;padding:10px;border-radius:4px;color:#000";
+    title.style = 'margin:5px 0;font-size:20px;';
+    title.innerText = "控制面板";
+    for (let i in baseoptions) {
+        let temp = document.createElement('input'), temp_p = document.createElement('p');
         js_dialog.appendChild(temp_p);
         temp_p.appendChild(temp);
-        temp.type='checkbox';
-        temp.name=i;
-        temp_p.style="display:flex;align-items: center;margin:5px 0"
-        temp_p.innerHTML+=baseoptions[i].declare;
+        temp.type = 'checkbox';
+        temp.name = i;
+        temp_p.style = "display:flex;align-items: center;margin:5px 0"
+        temp_p.innerHTML += baseoptions[i].declare;
     }
-    for(let i of js_dialog.querySelectorAll('input')){
-        if(i.name&&baseoptions[i.name]){
-            i.onclick=_=>{title.innerText="控制面板（请刷新以应用）";GM_setValue(i.name,i.checked);if(baseoptions[i.name].change_func)baseoptions[i.name].change_func(i)}
-            i.checked=GM_getValue(i.name,baseoptions[i.name].default_value)
+    for (let i of js_dialog.querySelectorAll('input')) {
+        if (i.name && baseoptions[i.name]) {
+            i.onclick = _ => {
+                title.innerText = "控制面板（请刷新以应用）";
+                GM_setValue(i.name, i.checked);
+                if (baseoptions[i.name].change_func) baseoptions[i.name].change_func(i)
+            }
+            i.checked = GM_getValue(i.name, baseoptions[i.name].default_value)
         }
+    }
+    for (let i of enable_details.querySelectorAll('input')) i.onclick = _ => {
+        title.innerText = "控制面板（请刷新以应用）";
+        GM_setValue('enable_rule:' + i.name, i.checked)
+    }
+    let open = document.createElement('div');
+    open.style = `z-index:9999;height:35px;width:35px;background-color:#fff;position:fixed;border:1px solid rgba(0,0,0,0.2);border-radius:17.5px;right:${GM_getValue('position_right', '9px')};top:${GM_getValue('position_top', '9px')};text-align-last:center;color:#000000;display:flex;align-items:center;justify-content:center;cursor: pointer;font-size:15px;user-select:none`;
+    open.innerHTML = "译";
+    open.onclick = () => {
+        mask.style.display = 'flex'
     };
-    for(let i of enable_details.querySelectorAll('input'))i.onclick=_=>{title.innerText="控制面板（请刷新以应用）";GM_setValue('enable_rule:'+i.name,i.checked)}
-    let open=document.createElement('div');
-    open.style=`z-index:9999;height:35px;width:35px;background-color:#fff;position:fixed;border:1px solid rgba(0,0,0,0.2);border-radius:17.5px;right:${GM_getValue('position_right','9px')};top:${GM_getValue('position_top','9px')};text-align-last:center;color:#000000;display:flex;align-items:center;justify-content:center;cursor: pointer;font-size:15px;user-select:none`;
-    open.innerHTML="译";
-    open.onclick=()=>{mask.style.display='flex'};
-    open.draggable=true;
-    open.addEventListener("dragstart",function(ev){this.tempNode=document.createElement('div');this.tempNode.style="width:1px;height:1px;opacity:0";document.body.appendChild(this.tempNode);ev.dataTransfer.setDragImage(this.tempNode,0,0);this.oldX=ev.offsetX-Number(this.style.width.replace('px',''));this.oldY=ev.offsetY});
-    open.addEventListener("drag",function(ev){if(!ev.x&&!ev.y)return;this.style.right=Math.max(window.innerWidth-ev.x+this.oldX,0)+"px";this.style.top=Math.max(ev.y-this.oldY,0)+"px"});
-    open.addEventListener("dragend",function(ev){GM_setValue("position_right",this.style.right);GM_setValue("position_top",this.style.top);document.body.removeChild(this.tempNode)});
-    open.addEventListener("touchstart", ev=>{ev.preventDefault();ev=ev.touches[0];open._tempTouch={};const base=open.getClientRects()[0];open._tempTouch.oldX=base.x+base.width-ev.clientX;open._tempTouch.oldY=base.y-ev.clientY});
-    open.addEventListener("touchmove",ev=>{ev=ev.touches[0];open.style.right=Math.max(window.innerWidth-open._tempTouch.oldX-ev.clientX,0)+'px';open.style.top=Math.max(ev.clientY+open._tempTouch.oldY,0)+'px';open._tempIsMove=true});
-    open.addEventListener("touchend",()=>{GM_setValue("position_right",open.style.right);GM_setValue("position_top",open.style.top);if(!open._tempIsMove){mask.style.display='flex'};open._tempIsMove=false})
+    open.draggable = true;
+    open.addEventListener("dragstart", function (ev) {
+        this.tempNode = document.createElement('div')
+        this.tempNode.style = "width:1px;height:1px;opacity:0"
+        document.body.appendChild(this.tempNode)
+        ev.dataTransfer.setDragImage(this.tempNode, 0, 0)
+        this.oldX = ev.offsetX - Number(this.style.width.replace('px', ''));
+        this.oldY = ev.offsetY
+    });
+    open.addEventListener("drag", function (ev) {
+        if (!ev.x && !ev.y) return
+        this.style.right = Math.max(window.innerWidth - ev.x + this.oldX, 0) + "px";
+        this.style.top = Math.max(ev.y - this.oldY, 0) + "px"
+    });
+    open.addEventListener("dragend", function () {
+        GM_setValue("position_right", this.style.right)
+        GM_setValue("position_top", this.style.top)
+        document.body.removeChild(this.tempNode)
+    });
+    open.addEventListener("touchstart", ev => {
+        ev.preventDefault();
+        ev = ev.touches[0];
+        open._tempTouch = {};
+        const base = open.getClientRects()[0];
+        open._tempTouch.oldX = base.x + base.width - ev.clientX
+        open._tempTouch.oldY = base.y - ev.clientY
+    });
+    open.addEventListener("touchmove", ev => {
+        ev = ev.touches[0];
+        open.style.right = Math.max(window.innerWidth - open._tempTouch.oldX - ev.clientX, 0) + 'px';
+        open.style.top = Math.max(ev.clientY + open._tempTouch.oldY, 0) + 'px';
+        open._tempIsMove = true
+    });
+    open.addEventListener("touchend", () => {
+        GM_setValue("position_right", open.style.right);
+        GM_setValue("position_top", open.style.top);
+        if (!open._tempIsMove) {
+            mask.style.display = 'flex'
+        }
+        open._tempIsMove = false
+    })
     window.top.document.body.appendChild(open);
-    window.top.document.querySelector('.js_translate option[value='+choice+']').selected=true;
+    window.top.document.querySelector('.js_translate option[value=' + choice + ']').selected = true;
 }
 
-(function() {
+(function () {
     'use strict';
     console.log(`【VNTT翻译辅助】启动`);
     // 翻译时才启动
@@ -96,10 +153,12 @@ function initPanel(){
             return
         }
         let MutationObserver = window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserver;
-        let observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
+        let observer = new MutationObserver(function (mutations) {
+            mutations.forEach(function (mutation) {
                 if (mutation.type === "attributes") {
                     if (edit.style.display === "none") {
+                        // 阻止编辑框 随便乱消失乱commit
+                        element.classList.add("editable-container")
                         // 文本类
                         const jpText = ToCDB(ori.innerText)
                         const chText = GetMemText(jpText, '')
@@ -119,13 +178,13 @@ function initPanel(){
                         }
                         let words = new Map()
                         let phrases = new Map()
-                        glossary.forEach(function(value,key){
+                        glossary.forEach(function (value, key) {
                             if (jpText.includes(key)) {
                                 words.set(key, value)
                                 phrases.set(key, value)
                             }
                         })
-                        character.forEach(function(value,key){
+                        character.forEach(function (value, key) {
                             if (jpText.includes(key)) {
                                 words.set(key, value)
                                 phrases.set(key, value)
@@ -137,7 +196,7 @@ function initPanel(){
                         copyBtn.className = 'btn btn-primary btn-sm'
                         copyBtn.innerHTML = '复制原文';
                         copyBtn.style = 'margin-right: 7px; background-color: #28a745; border-color: #28a745'
-                        copyBtn.addEventListener('click',()=>{
+                        copyBtn.addEventListener('click', () => {
                             editArea.value = jpText
                         })
                         submit.before(copyBtn)
@@ -147,19 +206,18 @@ function initPanel(){
                         copyMTBtn.className = 'btn btn-primary btn-sm'
                         copyMTBtn.innerHTML = '复制机翻';
                         copyMTBtn.style = 'margin-right: 7px; background-color: #28a745; border-color: #28a745'
-                        copyMTBtn.addEventListener('click',()=>{
-                            const mtText = ToCDB(element.getElementsByClassName("mt-text")[0].innerText)
-                            editArea.value = mtText
+                        copyMTBtn.addEventListener('click', () => {
+                            editArea.value = ToCDB(element.getElementsByClassName("mt-text")[0].innerText)
                         })
                         submit.before(copyMTBtn)
                         // 加术语和代码块按钮
-                        GetUniCodes(jpText).forEach(function(value,key){
+                        GetUniCodes(jpText).forEach(function (value) {
                             if (value !== "") {
                                 words.set(value, value)
                             }
                         })
                         let has = false
-                        words.forEach(function(value,key){
+                        words.forEach(function (value, key) {
                             has = true
                             let codeCopyBtn = document.createElement('button')
                             codeCopyBtn.type = 'button'
@@ -167,40 +225,48 @@ function initPanel(){
                             codeCopyBtn.title = key
                             codeCopyBtn.innerHTML = value
                             codeCopyBtn.style = 'padding: 1px 6px; font-size: 14px; background-color: #6c757d; border-color: #6c757d; margin: 4px 4px; margin-left: 0px'
-                            codeCopyBtn.addEventListener('click',()=>{
+                            codeCopyBtn.addEventListener('click', () => {
                                 insertText(editArea, codeCopyBtn.innerHTML)
                             })
                             editArea.before(codeCopyBtn)
                         })
-                        if ( has ) {
+                        if (has) {
                             window.scrollBy(0, 40)
                         }
                         // 查询重复语句
-                        find_duplicate(ori.innerText, submit, editArea)
+                        find_duplicate(ori.innerText, submit, editArea).then()
                         // 有翻译记忆采用翻译记忆
                         // 无翻译记忆开启机翻
                         if (chText !== '') {
-                            sleep(50).then(() => {editArea.value = chText});
+                            sleep(50).then(() => {
+                                editArea.value = chText
+                            });
                             if (GetCodes(jpText).length === GetCodes(chText).length) {
                                 if (edit.innerText === "Empty") {
-                                    sleep(50).then(() => {submit.click()});
+                                    sleep(50).then(() => {
+                                        submit.click()
+                                    });
                                 }
                             }
                         }
-                        if (chText === '' || edit.innerText !== "Empty"){
-                            const choice = GM_getValue('translate_choice','Mirai翻译')
-                            if (choice != '关闭翻译') {
-                                PromiseRetryWrap(startup[choice]).then(()=>{
+                        if (chText === '' || edit.innerText !== "Empty") {
+                            const choice = GM_getValue('translate_choice', '百度翻译')
+                            if (choice !== '关闭翻译') {
+                                PromiseRetryWrap(startup[choice]).then(() => {
                                     // 开始翻译
-                                    if (sessionStorage.getItem(choice+'-'+jpText)) {
-                                        baseTextSetter(ori,choice,sessionStorage.getItem(choice+'-'+jpText))
+                                    if (sessionStorage.getItem(choice + '-' + jpText)) {
+                                        SetChText(ori, choice, sessionStorage.getItem(choice + '-' + jpText))
                                     } else {
-                                        transdict[choice](jpText,phrases).then(s=>{baseTextSetter(ori,choice,s)})
+                                        transdict[choice](jpText, phrases).then(s => {
+                                            SetChText(ori, choice, s)
+                                        })
                                     }
                                 })
                             }
                         }
                     } else {
+                        // 阻止编辑框 随便乱消失乱commit
+                        element.classList.remove("editable-container")
                         // 关闭机翻显示
                         element.querySelectorAll('span.mt-split, span.mt-text').forEach(element => {
                             element.style.display = "none"
@@ -224,21 +290,21 @@ function initPanel(){
 String.prototype.trim = function (char, type) {
     if (char) {
         if (type === "left") {
-            return this.replace(new RegExp("^"+char+"+", "g"), "");
+            return this.replace(new RegExp("^" + char + "+", "g"), "");
         } else if (type === "right") {
-            return this.replace(new RegExp(""+char+"+$", "g"), "");
+            return this.replace(new RegExp("" + char + "+$", "g"), "");
         }
-        return this.replace(new RegExp("^"+char+"+|"+char+"+$", "g"), "");
+        return this.replace(new RegExp("^" + char + "+|" + char + "+$", "g"), "");
     }
     return this.replace(/^s+|s+$/g, "");
 };
 
 // sleep time expects milliseconds
-function sleep (time) {
+function sleep(time) {
     return new Promise((resolve) => setTimeout(resolve, time));
 }
 
-function insertText(obj,str) {
+function insertText(obj, str) {
     if (document.selection) {
         let sel = document.selection.createRange();
         sel.text = str;
@@ -257,7 +323,7 @@ function insertText(obj,str) {
 }
 
 
-function SetMemText(jpText,chText) {
+function SetMemText(jpText, chText) {
     if (chText === '' || chText === 'Empty') {
         return
     }
@@ -266,7 +332,7 @@ function SetMemText(jpText,chText) {
     chText = ToCDB(chText)
     GM_setValue(jpText, chText)
     let codes = jpText.match(regex)
-    let jpTextNC = jpText.replace(regex,'')
+    let jpTextNC = jpText.replace(regex, '')
     if (codes && jpTextNC !== '') {
         GM_setValue(jpTextNC, chText)
     }
@@ -281,7 +347,7 @@ function GetMemText(jpText) {
         return mmText
     }
     // 去除代码块后为空 说明全是代码 返回原代码
-    let jpTextNC = jpText.replace(regex,'')
+    let jpTextNC = jpText.replace(regex, '')
     if (jpTextNC === '') {
         return jpText
     }
@@ -298,10 +364,10 @@ function GetMemText(jpText) {
     let words = mmText.split(regex)
     let chText = words[0]
     for (let i = 1; i < words.length; i++) {
-        if (i-1 < codes.length) {
-            chText+=codes[i-1]
+        if (i - 1 < codes.length) {
+            chText += codes[i - 1]
         }
-        chText+=words[i]
+        chText += words[i]
     }
     return chText
 }
@@ -321,9 +387,9 @@ function GetUniCodes(jpText) {
     if (!codes) {
         return []
     }
-    return codes.filter(function(item, index, arr) {
+    return codes.filter(function (item, index, arr) {
         // 元素长度等于1 不会是代码 忽略
-        if ( item.length <= 1 ) {
+        if (item.length <= 1) {
             return false
         }
         // 原始数组中的第一个索引==当前索引值 如果不满足则为重复元素
@@ -341,31 +407,17 @@ function ToCDB(str) {
             (str.charCodeAt(i) >= 0xFF21 && str.charCodeAt(i) <= 0xFF3A) ||
             (str.charCodeAt(i) >= 0xFF41 && str.charCodeAt(i) <= 0xFF5A)) {
             tmp += String.fromCharCode(str.charCodeAt(i) - 65248);
-        }
-        else {
+        } else {
             tmp += String.fromCharCode(str.charCodeAt(i));
         }
     }
     return tmp
 }
 
-function removeItem(arr,item){
-    const index=arr.indexOf(item);
-    if(index>-1)arr.splice(index,1);
-}
-
-function baseSelector(element,selector){
-    return element.querySelectorAll(selector)
-}
-
-function baseTextGetter(e){
-    return e.innerText;
-}
-
-function baseTextSetter(e,name,text){//change element text
-    if((text||"").length==0)text='翻译异常';
+function SetChText(e, name, text) {//change element text
+    if ((text || "").length === 0) text = '翻译异常';
     let spanNodes = e.parentNode.querySelectorAll('span.mt-split, span.mt-text')
-    if ( spanNodes.length > 0 ) {
+    if (spanNodes.length > 0) {
         spanNodes.forEach(element => {
             element.style.display = ""
             if (element.className === 'mt-text') {
@@ -380,59 +432,148 @@ function baseTextSetter(e,name,text){//change element text
         spanNode1.id = "machine-trans"
         e.after(spanNode1);
         const spanNode2 = document.createElement('span');
-        spanNode2.innerText = show_info?"\n-----------"+name+"-----------\n\n":"\n";
+        spanNode2.innerText = show_info ? "\n-----------" + name + "-----------\n\n" : "\n";
         spanNode2.className = "mt-split"
         e.after(spanNode2);
     }
 }
+
 //--综合工具区--end
 
 //--查询重复语句--start
-async function find_duplicate(jpText, submit, editArea){
-    const searchUrl = 'https://a.vntt.app/project/hssh-renpy-tl-v3/search/ja/zh?original=true&q='+jpText
+
+async function find_duplicate(jpText, submit, editArea) {
+    const searchUrl = 'https://a.vntt.app/project/hssh-renpy-tl-v3/search/ja/zh?original=true&exact=true&q=' + jpText
     console.log(searchUrl)
     const options = {
-        method:'GET',
-        url:searchUrl,
+        method: 'GET',
+        url: searchUrl,
     }
     const res = await Request(options);
     const length = res.responseText.split('<div class="original">').length
     const chText = /(?<="Update translation">).+(?=<\/a>)/g.exec(res.responseText)
-    if (length < 3 || editArea.value !== "" || !chText) {
+    if (length < 3 || !chText) {
         return
     }
     // console.log(/(?<=<div class="original">).+(?=<\/div>)/g.exec(res.responseText))
     console.log(chText)
     // 加提示
-    var div = document.createElement("div");
+    const div = document.createElement("div");
     div.style.background = "#FFE4E1";
     div.style.borderRadius = "5px";
     div.style.color = "black";
     div.style.padding = "10px";
     div.style.margin = "2px 0px 8px 0px";
-    div.innerHTML = '同项目下已有以下翻译，是否采用？<a class="duplicate_notify" href="javascript:void(0);">采用该翻译</a> <a href="'+searchUrl+'" target="view_window">打开新窗口统一修改</a><br>----------------------------------------------------------<br>'+chText;
+    const firstCatch = '同项目下已有以下翻译，是否采用？<a class="duplicate_notify" href="javascript:void(0);">采用该翻译</a> '
+    const afterCatch = '同项目下有相同的原文，如需修改译文，请'
+    const newWindow = '<a href="' + searchUrl + '" target="view_window">打开新窗口统一修改</a><br>'
+    const splitLine = '----------------------------------------------------------<br>'
+    if (editArea.value) {
+        div.innerHTML = afterCatch + newWindow;
+    } else {
+        div.innerHTML = firstCatch + newWindow + splitLine + chText;
+        // 加一个监听
+        div.getElementsByClassName('duplicate_notify')[0].addEventListener('click', () => {
+            editArea.value = chText
+            submit.click()
+        })
+    }
     editArea.before(div)
-    // 加一个监听
-    div.getElementsByClassName('duplicate_notify')[0].addEventListener('click',()=>{
-        editArea.value = chText
-        submit.click()
-    })
 }
 
-//--Mirai翻译--start
-async function translate_mirai_startup(){
-    // if(sessionStorage.getItem('mirai_tran'))return;
+//--百度翻译--start
+
+function tk(a, b) {
+    let e = [];
+    let f = 0;
+    let bParts = b.split(".");
+    b = Number(bParts[0]) || 0;
+    for (let g = 0; g < a.length; g++) {
+        let k = a.charCodeAt(g);
+        if (k < 128) {
+            e[f++] = k;
+        } else if (k < 2048) {
+            e[f++] = k >> 6 | 192;
+            e[f++] = k & 63 | 128;
+        } else if (k >= 55296 && k <= 56319 && g + 1 < a.length) {
+            let nextK = a.charCodeAt(g + 1);
+            if (nextK >= 56320 && nextK <= 57343) {
+                k = ((k & 1023) << 10 | nextK & 1023) + 65536;
+                e[f++] = k >> 18 | 240;
+                e[f++] = k >> 12 & 63 | 128;
+                e[f++] = k >> 6 & 63 | 128;
+                e[f++] = k & 63 | 128;
+                g++;
+            }
+        } else {
+            e[f++] = k >> 12 | 224;
+            e[f++] = k >> 6 & 63 | 128;
+            e[f++] = k & 63 | 128;
+        }
+    }
+    a = b;
+    for (f = 0; f < e.length; f++) a = Fo(a + e[f], "+-a^+6");
+    a = Fo(a, "+-3^+b+-f");
+    a ^= Number(bParts[1]) || 0;
+    0 > a && (a = (a & 2147483647) + 2147483648);
+    a %= 1E6;
+    return a.toString() + "." + (a ^ b)
+}
+
+function Fo(a, b) {
+    for (let c = 0; c < b.length - 2; c += 3) {
+        let d = b.charAt(c + 2);
+        d = "a" <= d ? d.charCodeAt(0) - 87 : Number(d);
+        d = "+" === b.charAt(c + 1) ? a >>> d : a << d;
+        a = "+" === b.charAt(c) ? a + d & 4294967295 : a ^ d
+    }
+    return a
+}
+
+async function translate_baidu_startup() {
+    if (sessionStorage.getItem('baidu_gtk') && sessionStorage.getItem('baidu_token')) return;
     const options = {
-        method:'GET',
-        url:'https://miraitranslate.com/trial',
+        method: 'GET',
+        url: 'https://fanyi.baidu.com',
     }
     const res = await Request(options);
-    sessionStorage.setItem('mirai_tran',/tran = "(.*?)"/.exec(res.responseText)[1])
+    sessionStorage.setItem('baidu_token', /token: '(.*?)'/.exec(res.responseText)[1])
+    sessionStorage.setItem('baidu_gtk', /window\.gtk = "(.*?)"/.exec(res.responseText)[1])
 }
 
-async function translate_mirai(raw, phrases){
+async function translate_baidu(raw) {
+    const processed_raw = raw.length > 30 ? (raw.substr(0, 10) + raw.substr(~~(raw.length / 2) - 5, 10) + raw.substr(-10)) : raw;//process
+    const tk_key = sessionStorage.getItem('baidu_gtk');
+    const token = sessionStorage.getItem('baidu_token');//get token
+    const options = {
+        method: "POST",
+        url: 'https://fanyi.baidu.com/v2transapi',
+        data: 'from=auto&to=zh&query=' + encodeURIComponent(raw) + '&simple_means_flag=3&sign=' + tk(processed_raw, tk_key) + "&token=" + token + "&domain=common",
+        headers: {
+            "referer": 'https://fanyi.baidu.com',
+            "Content-Type": 'application/x-www-form-urlencoded; charset=UTF-8',
+        },
+    }
+    return await BaseTranslate('百度翻译', raw, options, res => JSON.parse(res).trans_result.data.map(item => item.dst).join('\n'))
+}
+
+//--百度翻译--end
+
+//--Mirai翻译--start
+
+async function translate_mirai_startup() {
+    // if(sessionStorage.getItem('mirai_tran'))return;
+    const options = {
+        method: 'GET',
+        url: 'https://miraitranslate.com/trial',
+    }
+    const res = await Request(options);
+    sessionStorage.setItem('mirai_tran', /tran = "(.*?)"/.exec(res.responseText)[1])
+}
+
+async function translate_mirai(raw, phrases) {
     let adaptPhrases = []
-    phrases.forEach(function(value,key){
+    phrases.forEach(function (value, key) {
         adaptPhrases.push({
             source: key,
             target: value
@@ -453,114 +594,55 @@ async function translate_mirai(raw, phrases){
         zt: false
     }
     const options = {
-        method:"POST",
-        url:'https://trial.miraitranslate.com/trial/api/translate.php',
-        data:JSON.stringify(jsonData),
+        method: "POST",
+        url: 'https://trial.miraitranslate.com/trial/api/translate.php',
+        data: JSON.stringify(jsonData),
         headers: {
             "Content-Type": 'application/json',
         },
     }
-    return await BaseTranslate('Mirai翻译',raw,options,translate_mirai_post)
+    return await BaseTranslate('Mirai翻译', raw, options, translate_mirai_post)
 }
 
-function translate_mirai_post(res){
+function translate_mirai_post(res) {
     let tran = JSON.parse(res).outputs[0].output[0].translation
     tran = tran.replace(/ /g, "")
-    tran = tran.replace(/\!/g, "！")
+    tran = tran.replace(/!/g, "！")
     tran = tran.replace(/\?/g, "？")
     tran = tran.replace(/^“/, "「")
     tran = tran.replace(/”$/, "」")
     tran = tran.replace(/\.\.\.+/g, "……")
     return tran
 }
+
 //--Mirai翻译--end
 
 //--谷歌翻译--start
-async function translate_gg(raw){
+async function translate_gg(raw) {
     const options = {
-        method:"POST",
-        url:"https://translate.google.com/_/TranslateWebserverUi/data/batchexecute",
-        data: "f.req="+encodeURIComponent(JSON.stringify([[["MkEWBc",JSON.stringify([[raw,"auto","zh-CN",true],[null]]),null,"generic"]]])),
+        method: "POST",
+        url: "https://translate.google.com/_/TranslateWebserverUi/data/batchexecute",
+        data: "f.req=" + encodeURIComponent(JSON.stringify([[["MkEWBc", JSON.stringify([[raw, "auto", "zh-CN", true], [null]]), null, "generic"]]])),
         headers: {
             "content-type": "application/x-www-form-urlencoded",
             "Host": "translate.google.com",
         },
-        anonymous:true,
-        nocache:true,
+        anonymous: true,
+        nocache: true,
     }
-    return await BaseTranslate('谷歌翻译',raw,options,res=>JSON.parse(JSON.parse(res.slice(res.indexOf('[')))[0][2])[1][0][0][5].map(item=>item[0]).join(''))
+    return await BaseTranslate('谷歌翻译', raw, options, res => JSON.parse(JSON.parse(res.slice(res.indexOf('[')))[0][2])[1][0][0][5].map(item => item[0]).join(''))
 }
 
 //--谷歌翻译--end
 
-//--百度翻译--start
-function tk(a,b){
-    let d = b.split(".");
-    b = Number(d[0]) || 0;
-    for (var e = [], f = 0, g = 0; g < a.length; g++) {
-        let k = a.charCodeAt(g);
-        128 > k ? e[f++] = k :
-        (2048 > k ? e[f++] = k >> 6 | 192 :
-         (55296 == (k & 64512) && g + 1 < a.length && 56320 == (a.charCodeAt(g + 1) & 64512) ? (k = 65536 + ((k & 1023) << 10) + (a.charCodeAt(++g) & 1023), e[f++] = k >> 18 | 240, e[f++] = k >> 12 & 63 | 128) :
-          e[f++] = k >> 12 | 224,
-          e[f++] = k >> 6 & 63 | 128),
-         e[f++] = k & 63 | 128)
-    }
-    a = b;
-    for (f = 0; f < e.length; f++)a = Fo(a+e[f], "+-a^+6");
-    a = Fo(a, "+-3^+b+-f");
-    a ^= Number(d[1]) || 0;
-    0 > a && (a = (a & 2147483647) + 2147483648);
-    a %= 1E6;
-    return a.toString() + "." + (a ^ b)
-}
-function Fo(a, b) {
-    for (let c = 0; c < b.length - 2; c += 3) {
-        let d = b.charAt(c + 2);
-        d = "a" <= d ? d.charCodeAt(0) - 87 : Number(d);
-        d = "+" == b.charAt(c + 1) ? a >>> d : a << d;
-        a = "+" == b.charAt(c) ? a + d & 4294967295 : a ^ d
-    }
-    return a
-}
-
-async function translate_baidu_startup(){
-    if(sessionStorage.getItem('baidu_gtk')&&sessionStorage.getItem('baidu_token'))return;
-    const options = {
-        method:'GET',
-        url:'https://fanyi.baidu.com',
-    }
-    const res = await Request(options);
-    sessionStorage.setItem('baidu_token',/token: '(.*?)'/.exec(res.responseText)[1])
-    sessionStorage.setItem('baidu_gtk',/window\.gtk = "(.*?)"/.exec(res.responseText)[1])
-}
-
-async function translate_baidu(raw){
-    const processed_raw = raw.length>30?(raw.substr(0,10)+raw.substr(~~(raw.length/2)-5,10)+raw.substr(-10)):raw;//process
-    const tk_key = sessionStorage.getItem('baidu_gtk');
-    const token = sessionStorage.getItem('baidu_token');//get token
-    const options = {
-        method:"POST",
-        url:'https://fanyi.baidu.com/v2transapi',
-        data:'from=auto&to=zh&query='+encodeURIComponent(raw)+'&simple_means_flag=3&sign='+tk(processed_raw,tk_key)+"&token="+token+"&domain=common",
-        headers: {
-            "referer": 'https://fanyi.baidu.com',
-            "Content-Type": 'application/x-www-form-urlencoded; charset=UTF-8',
-        },
-    }
-    return await BaseTranslate('百度翻译',raw,options,res=>JSON.parse(res).trans_result.data.map(item=>item.dst).join('\n'))
-}
-
-//--百度翻译--end
 
 //--腾讯翻译--start
-
-async function translate_tencent_startup(){
-    setTimeout(translate_tencent_startup,10000)//token刷新
+async function translate_tencent_startup() {
+    setTimeout(translate_tencent_startup, 10000)//token刷新
     const base_options = {
         method: 'GET',
         url: 'http://fanyi.qq.com',
-        anonymous:true,
+        anonymous: true,
         headers: {
             "User-Agent": "test",
         }
@@ -568,75 +650,76 @@ async function translate_tencent_startup(){
     const base_res = await Request(base_options)
     const uri = /reauthuri = "(.*?)"/.exec(base_res.responseText)[1]
     const options = {
-        method:'POST',
-        url:'https://fanyi.qq.com/api/'+uri
+        method: 'POST',
+        url: 'https://fanyi.qq.com/api/' + uri
     }
     const res = await Request(options);
     const data = JSON.parse(res.responseText);
-    sessionStorage.setItem('tencent_qtv',data.qtv)
-    sessionStorage.setItem('tencent_qtk',data.qtk)
+    sessionStorage.setItem('tencent_qtv', data.qtv)
+    sessionStorage.setItem('tencent_qtk', data.qtk)
 }
 
 
-async function translate_tencent(raw){
-    const qtk=sessionStorage.getItem('tencent_qtk'),qtv=sessionStorage.getItem('tencent_qtv');
+async function translate_tencent(raw) {
+    const qtk = sessionStorage.getItem('tencent_qtk'), qtv = sessionStorage.getItem('tencent_qtv');
     const options = {
-        method:'POST',
-        url:'https://fanyi.qq.com/api/translate',
-        data:`source=auto&target=zh&sourceText=${encodeURIComponent(raw)}&qtv=${encodeURIComponent(qtv)}&qtk=${encodeURIComponent(qtk)}&sessionUuid=translate_uuid${Date.now()}`,
+        method: 'POST',
+        url: 'https://fanyi.qq.com/api/translate',
+        data: `source=auto&target=zh&sourceText=${encodeURIComponent(raw)}&qtv=${encodeURIComponent(qtv)}&qtk=${encodeURIComponent(qtk)}&sessionUuid=translate_uuid${Date.now()}`,
         headers: {
-            "Host":"fanyi.qq.com",
-            "Origin":"https://fanyi.qq.com",
+            "Host": "fanyi.qq.com",
+            "Origin": "https://fanyi.qq.com",
             "Content-Type": "application/x-www-form-urlencoded",
             "Referer": "https://fanyi.qq.com/",
             "X-Requested-With": "XMLHttpRequest",
         }
     }
-    return await BaseTranslate('腾讯翻译',raw,options,res=>JSON.parse(res).translate.records.map(e=>e.targetText).join(''))
+    return await BaseTranslate('腾讯翻译', raw, options, res => JSON.parse(res).translate.records.map(e => e.targetText).join(''))
 }
 
 //--腾讯翻译--end
 
 //--异步请求包装工具--start
-
-async function PromiseRetryWrap(task,options,...values){
-    const {RetryTimes,ErrProcesser} = options||{};
-    let retryTimes = RetryTimes||5;
-    const usedErrProcesser = ErrProcesser || (err =>{throw err});
-    if(!task)return;
-    while(true){
-        try{
+async function PromiseRetryWrap(task, options, ...values) {
+    const {RetryTimes, ErrProcessor} = options || {};
+    let retryTimes = RetryTimes || 5;
+    const usedErrProcessor = ErrProcessor || (err => {
+        throw err
+    });
+    if (!task) return;
+    while (true) {
+        try {
             return await task(...values);
-        }catch(err){
-            if(!--retryTimes){
+        } catch (err) {
+            if (!--retryTimes) {
                 console.log(err);
-                return usedErrProcesser(err);
+                return usedErrProcessor(err);
             }
         }
     }
 }
 
-async function BaseTranslate(name,raw,options,processer){
-    const toDo = async ()=>{
-        let tmp;
-        try{
+async function BaseTranslate(name, raw, options, processor) {
+    const toDo = async () => {
+        let tmp = "";
+        try {
             const data = await Request(options);
             tmp = data.responseText;
-            const result = await processer(tmp);
-            if(result)sessionStorage.setItem(name+'-'+raw,result);
+            const result = await processor(tmp);
+            if (result) sessionStorage.setItem(name + '-' + raw, result);
             return result
-        }catch(err){
+        } catch (err) {
             throw {
                 responseText: tmp,
                 err: err
             }
         }
     }
-    return await PromiseRetryWrap(toDo,{RetryTimes:3,ErrProcesser:()=>"翻译出错"})
+    return await PromiseRetryWrap(toDo, {RetryTimes: 3})
 }
 
-function Request(options){
-    return new Promise((reslove,reject)=>GM_xmlhttpRequest({...options,onload:reslove,onerror:reject}))
+function Request(options) {
+    return new Promise((resolve, reject) => GM_xmlhttpRequest({...options, onload: resolve, onerror: reject}))
 }
 
 //--异步请求包装工具--end//
