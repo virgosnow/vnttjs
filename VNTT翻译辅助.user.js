@@ -18,128 +18,14 @@ const transdict = {
     '百度翻译': translate_baidu,
     '腾讯翻译': translate_tencent,
     '谷歌翻译': translate_gg,
-    'みらい翻译': translate_mirai,
-    '关闭翻译': () => {
-    }
+    'Mirai翻译': translate_mirai,
 };
 const startup = {
     '百度翻译': translate_baidu_startup,
     '腾讯翻译': translate_tencent_startup,
-    'みらい翻译': translate_mirai_startup
+    '谷歌翻译': translate_gg_startup,
+    'Mirai翻译': translate_mirai_startup
 };
-const baseoptions = {
-    'show_info': {
-        declare: '显示翻译源',
-        default_value: true,
-    }
-};
-
-const [show_info] = Object.keys(baseoptions).map(key => GM_getValue(key, baseoptions[key].default_value));
-
-function initPanel() {
-    // 翻译选项
-    let choice = GM_getValue('translate_choice', '百度翻译');
-    let select = document.createElement("select");
-    select.className = 'js_translate';
-    select.style = 'height:35px;width:100px;background-color:#fff;border-radius:17.5px;text-align-last:center;color:#000000;margin:5px 0'
-    select.onchange = () => {
-        GM_setValue('translate_choice', select.value)
-    };
-    for (let i in transdict) {
-        select.innerHTML += '<option value="' + i + '">' + i + '</option>'
-    }
-    //
-    let enable_details = document.createElement('details')
-    let mask = document.createElement('div'), dialog = document.createElement("div"),
-        js_dialog = document.createElement("div"), title = document.createElement('p')
-    //
-    window.top.document.body.appendChild(mask);
-    dialog.appendChild(js_dialog);
-    mask.appendChild(dialog);
-    js_dialog.appendChild(title)
-    js_dialog.appendChild(document.createElement('p').appendChild(select));
-    //
-    mask.style = "display: none;position: fixed;height: 100vh;width: 100vw;z-index: 99999;top: 0;left: 0;overflow: hidden;background-color: rgba(0,0,0,0.4);justify-content: center;align-items: center;"
-    mask.addEventListener('click', event => {
-        if (event.target === mask) mask.style.display = 'none'
-    });
-    dialog.style = 'padding:0;border-radius:10px;background-color: #fff;box-shadow: 0 0 5px 4px rgba(0,0,0,0.3);';
-    js_dialog.style = "min-height:10vh;min-width:10vw;display:flex;flex-direction:column;align-items:center;padding:10px;border-radius:4px;color:#000";
-    title.style = 'margin:5px 0;font-size:20px;';
-    title.innerText = "控制面板";
-    for (let i in baseoptions) {
-        let temp = document.createElement('input'), temp_p = document.createElement('p');
-        js_dialog.appendChild(temp_p);
-        temp_p.appendChild(temp);
-        temp.type = 'checkbox';
-        temp.name = i;
-        temp_p.style = "display:flex;align-items: center;margin:5px 0"
-        temp_p.innerHTML += baseoptions[i].declare;
-    }
-    for (let i of js_dialog.querySelectorAll('input')) {
-        if (i.name && baseoptions[i.name]) {
-            i.onclick = _ => {
-                title.innerText = "控制面板（请刷新以应用）";
-                GM_setValue(i.name, i.checked);
-                if (baseoptions[i.name].change_func) baseoptions[i.name].change_func(i)
-            }
-            i.checked = GM_getValue(i.name, baseoptions[i.name].default_value)
-        }
-    }
-    for (let i of enable_details.querySelectorAll('input')) i.onclick = _ => {
-        title.innerText = "控制面板（请刷新以应用）";
-        GM_setValue('enable_rule:' + i.name, i.checked)
-    }
-    let open = document.createElement('div');
-    open.style = `z-index:9999;height:35px;width:35px;background-color:#fff;position:fixed;border:1px solid rgba(0,0,0,0.2);border-radius:17.5px;right:${GM_getValue('position_right', '9px')};top:${GM_getValue('position_top', '9px')};text-align-last:center;color:#000000;display:flex;align-items:center;justify-content:center;cursor: pointer;font-size:15px;user-select:none`;
-    open.innerHTML = "译";
-    open.onclick = () => {
-        mask.style.display = 'flex'
-    };
-    open.draggable = true;
-    open.addEventListener("dragstart", function (ev) {
-        this.tempNode = document.createElement('div')
-        this.tempNode.style = "width:1px;height:1px;opacity:0"
-        document.body.appendChild(this.tempNode)
-        ev.dataTransfer.setDragImage(this.tempNode, 0, 0)
-        this.oldX = ev.offsetX - Number(this.style.width.replace('px', ''));
-        this.oldY = ev.offsetY
-    });
-    open.addEventListener("drag", function (ev) {
-        if (!ev.x && !ev.y) return
-        this.style.right = Math.max(window.innerWidth - ev.x + this.oldX, 0) + "px";
-        this.style.top = Math.max(ev.y - this.oldY, 0) + "px"
-    });
-    open.addEventListener("dragend", function () {
-        GM_setValue("position_right", this.style.right)
-        GM_setValue("position_top", this.style.top)
-        document.body.removeChild(this.tempNode)
-    });
-    open.addEventListener("touchstart", ev => {
-        ev.preventDefault();
-        ev = ev.touches[0];
-        open._tempTouch = {};
-        const base = open.getClientRects()[0];
-        open._tempTouch.oldX = base.x + base.width - ev.clientX
-        open._tempTouch.oldY = base.y - ev.clientY
-    });
-    open.addEventListener("touchmove", ev => {
-        ev = ev.touches[0];
-        open.style.right = Math.max(window.innerWidth - open._tempTouch.oldX - ev.clientX, 0) + 'px';
-        open.style.top = Math.max(ev.clientY + open._tempTouch.oldY, 0) + 'px';
-        open._tempIsMove = true
-    });
-    open.addEventListener("touchend", () => {
-        GM_setValue("position_right", open.style.right);
-        GM_setValue("position_top", open.style.top);
-        if (!open._tempIsMove) {
-            mask.style.display = 'flex'
-        }
-        open._tempIsMove = false
-    })
-    window.top.document.body.appendChild(open);
-    window.top.document.querySelector('.js_translate option[value=' + choice + ']').selected = true;
-}
 
 (function () {
     'use strict';
@@ -234,7 +120,7 @@ function initPanel() {
                             window.scrollBy(0, 40)
                         }
                         // 查询重复语句
-                        find_duplicate(ori.innerText, submit, editArea).then()
+                        FindDuplicate(ori.innerText, submit, editArea).then()
                         // 有翻译记忆采用翻译记忆
                         // 无翻译记忆开启机翻
                         if (chText !== '') {
@@ -250,19 +136,7 @@ function initPanel() {
                             }
                         }
                         if (chText === '' || edit.innerText !== "Empty") {
-                            const choice = GM_getValue('translate_choice', '百度翻译')
-                            if (choice !== '关闭翻译') {
-                                PromiseRetryWrap(startup[choice]).then(() => {
-                                    // 开始翻译
-                                    if (sessionStorage.getItem(choice + '-' + jpText)) {
-                                        SetChText(ori, choice, sessionStorage.getItem(choice + '-' + jpText))
-                                    } else {
-                                        transdict[choice](jpText, phrases).then(s => {
-                                            SetChText(ori, choice, s)
-                                        })
-                                    }
-                                })
-                            }
+                            RequestTranslate(ori, jpText, phrases).then()
                         }
                     } else {
                         // 阻止编辑框 随便乱消失乱commit
@@ -282,11 +156,9 @@ function initPanel() {
             attributeFilter: ['style']
         })
     });
-    initPanel();
 })();
 
-//--综合工具区--start
-
+// 共用方法
 String.prototype.trim = function (char, type) {
     if (char) {
         if (type === "left") {
@@ -414,9 +286,17 @@ function ToCDB(str) {
     return tmp
 }
 
-function SetChText(e, name, text) {//change element text
+async function RequestTranslate(ori, jpText, phrases) {
+    const choice = GM_getValue('translate_choice', '百度翻译')
+    let text = sessionStorage.getItem(choice + '-' + jpText)
+    if (!text) {
+        await startup[choice]().then()
+        await transdict[choice](jpText, phrases).then(s => {
+            text = s
+        })
+    }
     if ((text || "").length === 0) text = '翻译异常';
-    let spanNodes = e.parentNode.querySelectorAll('span.mt-split, span.mt-text')
+    let spanNodes = ori.parentNode.querySelectorAll('span.mt-split, span.mt-text')
     if (spanNodes.length > 0) {
         spanNodes.forEach(element => {
             element.style.display = ""
@@ -426,23 +306,34 @@ function SetChText(e, name, text) {//change element text
         })
     } else {
         const spanNode1 = document.createElement('span');
-        spanNode1.style.whiteSpace = "pre-wrap";
-        spanNode1.innerText = text;
+        spanNode1.style.whiteSpace = "pre-wrap"
+        spanNode1.innerText = text
         spanNode1.className = "mt-text"
         spanNode1.id = "machine-trans"
-        e.after(spanNode1);
-        const spanNode2 = document.createElement('span');
-        spanNode2.innerText = show_info ? "\n-----------" + name + "-----------\n\n" : "\n";
+        ori.after(spanNode1)
+        const spanNode2 = document.createElement('span')
+        spanNode2.innerHTML = "<br>-----------　<select class='translate_select'></select>　-----------<br><br>"
         spanNode2.className = "mt-split"
-        e.after(spanNode2);
+        let select = spanNode2.getElementsByClassName('translate_select')[0]
+        for (const transdictKey in transdict) {
+            const option = document.createElement('option')
+            option.value = transdictKey
+            option.text = transdictKey
+            select.appendChild(option)
+        }
+        select.value = choice
+        select.addEventListener('change', e => {
+            GM_setValue('translate_choice', e.target.value)
+            console.log("set " + e.target.value)
+            ori.parentNode.getElementsByClassName('mt-text')[0].innerText = "切换中..."
+            RequestTranslate(ori, jpText, phrases)
+        })
+        ori.after(spanNode2)
     }
 }
 
-//--综合工具区--end
-
-//--查询重复语句--start
-
-async function find_duplicate(jpText, submit, editArea) {
+// 查询重复语句
+async function FindDuplicate(jpText, submit, editArea) {
     const searchUrl = 'https://a.vntt.app/project/hssh-renpy-tl-v3/search/ja/zh?original=true&exact=true&q=' + jpText
     console.log(searchUrl)
     const options = {
@@ -481,8 +372,7 @@ async function find_duplicate(jpText, submit, editArea) {
     editArea.before(div)
 }
 
-//--百度翻译--start
-
+// 百度翻译
 function tk(a, b) {
     let e = [];
     let f = 0;
@@ -531,6 +421,7 @@ function Fo(a, b) {
 }
 
 async function translate_baidu_startup() {
+    console.log("baidu start up")
     if (sessionStorage.getItem('baidu_gtk') && sessionStorage.getItem('baidu_token')) return;
     const options = {
         method: 'GET',
@@ -542,6 +433,7 @@ async function translate_baidu_startup() {
 }
 
 async function translate_baidu(raw) {
+    console.log("baidu request")
     const processed_raw = raw.length > 30 ? (raw.substr(0, 10) + raw.substr(~~(raw.length / 2) - 5, 10) + raw.substr(-10)) : raw;//process
     const tk_key = sessionStorage.getItem('baidu_gtk');
     const token = sessionStorage.getItem('baidu_token');//get token
@@ -554,13 +446,10 @@ async function translate_baidu(raw) {
             "Content-Type": 'application/x-www-form-urlencoded; charset=UTF-8',
         },
     }
-    return await BaseTranslate('百度翻译', raw, options, res => JSON.parse(res).trans_result.data.map(item => item.dst).join('\n'))
+    return await Translate('百度翻译', raw, options, res => JSON.parse(res).trans_result.data.map(item => item.dst).join('\n'))
 }
 
-//--百度翻译--end
-
-//--Mirai翻译--start
-
+// Mirai翻译
 async function translate_mirai_startup() {
     // if(sessionStorage.getItem('mirai_tran'))return;
     const options = {
@@ -601,7 +490,7 @@ async function translate_mirai(raw, phrases) {
             "Content-Type": 'application/json',
         },
     }
-    return await BaseTranslate('Mirai翻译', raw, options, translate_mirai_post)
+    return await Translate('Mirai翻译', raw, options, translate_mirai_post)
 }
 
 function translate_mirai_post(res) {
@@ -615,9 +504,11 @@ function translate_mirai_post(res) {
     return tran
 }
 
-//--Mirai翻译--end
+// 谷歌翻译
+async function translate_gg_startup() {
+    // do nothing
+}
 
-//--谷歌翻译--start
 async function translate_gg(raw) {
     const options = {
         method: "POST",
@@ -630,13 +521,11 @@ async function translate_gg(raw) {
         anonymous: true,
         nocache: true,
     }
-    return await BaseTranslate('谷歌翻译', raw, options, res => JSON.parse(JSON.parse(res.slice(res.indexOf('[')))[0][2])[1][0][0][5].map(item => item[0]).join(''))
+    return await Translate('谷歌翻译', raw, options, res => JSON.parse(JSON.parse(res.slice(res.indexOf('[')))[0][2])[1][0][0][5].map(item => item[0]).join(''))
 }
 
-//--谷歌翻译--end
 
-
-//--腾讯翻译--start
+// 腾讯翻译
 async function translate_tencent_startup() {
     setTimeout(translate_tencent_startup, 10000)//token刷新
     const base_options = {
@@ -674,52 +563,25 @@ async function translate_tencent(raw) {
             "X-Requested-With": "XMLHttpRequest",
         }
     }
-    return await BaseTranslate('腾讯翻译', raw, options, res => JSON.parse(res).translate.records.map(e => e.targetText).join(''))
+    return await Translate('腾讯翻译', raw, options, res => JSON.parse(res).translate.records.map(e => e.targetText).join(''))
 }
 
-//--腾讯翻译--end
-
-//--异步请求包装工具--start
-async function PromiseRetryWrap(task, options, ...values) {
-    const {RetryTimes, ErrProcessor} = options || {};
-    let retryTimes = RetryTimes || 5;
-    const usedErrProcessor = ErrProcessor || (err => {
-        throw err
-    });
-    if (!task) return;
-    while (true) {
-        try {
-            return await task(...values);
-        } catch (err) {
-            if (!--retryTimes) {
-                console.log(err);
-                return usedErrProcessor(err);
-            }
+async function Translate(name, raw, options, processor) {
+    let tmp = "";
+    try {
+        const data = await Request(options);
+        tmp = data.responseText;
+        const result = await processor(tmp);
+        if (result) sessionStorage.setItem(name + '-' + raw, result);
+        return result
+    } catch (err) {
+        throw {
+            responseText: tmp,
+            err: err
         }
     }
-}
-
-async function BaseTranslate(name, raw, options, processor) {
-    const toDo = async () => {
-        let tmp = "";
-        try {
-            const data = await Request(options);
-            tmp = data.responseText;
-            const result = await processor(tmp);
-            if (result) sessionStorage.setItem(name + '-' + raw, result);
-            return result
-        } catch (err) {
-            throw {
-                responseText: tmp,
-                err: err
-            }
-        }
-    }
-    return await PromiseRetryWrap(toDo, {RetryTimes: 3})
 }
 
 function Request(options) {
     return new Promise((resolve, reject) => GM_xmlhttpRequest({...options, onload: resolve, onerror: reject}))
 }
-
-//--异步请求包装工具--end//
