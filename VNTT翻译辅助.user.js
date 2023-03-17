@@ -9,6 +9,7 @@
 // @connect      fanyi.baidu.com
 // @connect      translate.google.com
 // @connect      fanyi.qq.com
+// @connect      api.openai.com
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -19,12 +20,14 @@ const transdict = {
     '腾讯翻译': translate_tencent,
     '谷歌翻译': translate_gg,
     'Mirai翻译': translate_mirai,
+    'ChatGPT': translate_chat,
 };
 const startup = {
     '百度翻译': translate_baidu_startup,
     '腾讯翻译': translate_tencent_startup,
     '谷歌翻译': translate_gg_startup,
-    'Mirai翻译': translate_mirai_startup
+    'Mirai翻译': translate_mirai_startup,
+    'ChatGPT': translate_chat_startup,
 };
 
 let currentRow;
@@ -303,12 +306,18 @@ async function RequestTranslate(ori, jpText, phrases) {
     const choice = GM_getValue('translate_choice', '百度翻译')
     let text = sessionStorage.getItem(choice + '-' + jpText)
     if (!text) {
-        await startup[choice]().then()
-        await transdict[choice](jpText, phrases).then(s => {
-            text = s
-        })
+        try {
+            text = "翻译中……"
+            startup[choice]().then(() => {
+                transdict[choice](jpText, phrases).then(s => {
+                    if ((s || "").length === 0) s = '翻译异常'
+                    ori.parentNode.getElementsByClassName("mt-text")[0].innerText = s
+                })
+            })
+        } catch (e) {
+            console.log(e)
+        }
     }
-    if ((text || "").length === 0) text = '翻译异常';
     let spanNodes = ori.parentNode.querySelectorAll('span.mt-split, span.mt-text')
     if (spanNodes.length > 0) {
         spanNodes.forEach(element => {
@@ -338,7 +347,6 @@ async function RequestTranslate(ori, jpText, phrases) {
         select.addEventListener('change', e => {
             GM_setValue('translate_choice', e.target.value)
             console.log("set " + e.target.value)
-            ori.parentNode.getElementsByClassName('mt-text')[0].innerText = "切换中..."
             RequestTranslate(ori, jpText, phrases)
         })
         ori.after(spanNode2)
@@ -533,6 +541,27 @@ async function translate_gg(raw) {
     return await Translate('谷歌翻译', raw, options, res => JSON.parse(JSON.parse(res.slice(res.indexOf('[')))[0][2])[1][0][0][5].map(item => item[0]).join(''))
 }
 
+// ChatGPT翻译
+async function translate_chat_startup() {
+    // do nothing
+}
+
+async function translate_chat(raw) {
+    const jsonData = {
+        model: "gpt-3.5-turbo",
+        messages: [{"role": "user", "content": "请将以下句子翻译成中文：" + raw}]
+    }
+    const options = {
+        method: "POST",
+        url: "https://api.openai.com/v1/chat/completions",
+        data: JSON.stringify(jsonData),
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer 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",
+        }
+    }
+    return await Translate('ChatGPT', raw, options, res => JSON.parse(res).choices[0].message.content.replace(/\n/g, ""))
+}
 
 // 腾讯翻译
 async function translate_tencent_startup() {
