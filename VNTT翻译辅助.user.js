@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.62
+// @version      0.63
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -27,6 +27,8 @@ const startup = {
     'Mirai翻译': translate_mirai_startup
 };
 
+let currentRow;
+
 (function () {
     'use strict';
     console.log(`【VNTT翻译辅助】启动`);
@@ -45,6 +47,14 @@ const startup = {
                     if (edit.style.display === "none") {
                         // 阻止编辑框 随便乱消失乱commit
                         element.classList.add("editable-container")
+                        // 关闭之前的编辑框
+                        if (currentRow) {
+                            let cancels = currentRow.getElementsByClassName('editable-cancel')
+                            if (cancels.length > 0) {
+                                cancels[0].click()
+                            }
+                        }
+                        currentRow = element
                         // 文本类
                         const jpText = ToCDB(ori.innerText)
                         const chText = GetMemText(jpText, '')
@@ -81,7 +91,7 @@ const startup = {
                         copyBtn.type = 'button'
                         copyBtn.className = 'btn btn-primary btn-sm'
                         copyBtn.innerHTML = '复制原文';
-                        copyBtn.style = 'margin-right: 7px; background-color: #28a745; border-color: #28a745'
+                        copyBtn.style.cssText = 'margin-right: 7px; background-color: #a76e28; border-color: #a76e28'
                         copyBtn.addEventListener('click', () => {
                             editArea.value = jpText
                         })
@@ -91,7 +101,7 @@ const startup = {
                         copyMTBtn.type = 'button'
                         copyMTBtn.className = 'btn btn-primary btn-sm'
                         copyMTBtn.innerHTML = '复制机翻';
-                        copyMTBtn.style = 'margin-right: 7px; background-color: #28a745; border-color: #28a745'
+                        copyMTBtn.style.cssText = 'margin-right: 7px; background-color: #28a745; border-color: #28a745'
                         copyMTBtn.addEventListener('click', () => {
                             editArea.value = ToCDB(element.getElementsByClassName("mt-text")[0].innerText)
                         })
@@ -110,7 +120,7 @@ const startup = {
                             codeCopyBtn.className = 'btn btn-primary btn-sm'
                             codeCopyBtn.title = key
                             codeCopyBtn.innerHTML = value
-                            codeCopyBtn.style = 'padding: 1px 6px; font-size: 14px; background-color: #6c757d; border-color: #6c757d; margin: 4px 4px; margin-left: 0px'
+                            codeCopyBtn.style.cssText = 'padding: 1px 6px; font-size: 14px; background-color: #6c757d; border-color: #6c757d; margin: 4px 4px; margin-left: 0px'
                             codeCopyBtn.addEventListener('click', () => {
                                 insertText(editArea, codeCopyBtn.innerHTML)
                             })
@@ -178,9 +188,11 @@ function sleep(time) {
 
 function insertText(obj, str) {
     if (document.selection) {
+        // older versions of Internet Explorer
         let sel = document.selection.createRange();
         sel.text = str;
     } else if (typeof obj.selectionStart === 'number' && typeof obj.selectionEnd === 'number') {
+        // 覆盖选择的文字
         let startPos = obj.selectionStart,
             endPos = obj.selectionEnd,
             cursorPos = startPos,
@@ -189,6 +201,7 @@ function insertText(obj, str) {
         cursorPos += str.length;
         obj.selectionStart = obj.selectionEnd = cursorPos;
     } else {
+        // 直接在后面追加
         obj.value += str;
     }
     obj.focus()
@@ -419,7 +432,6 @@ function Fo(a, b) {
 }
 
 async function translate_baidu_startup() {
-    console.log("baidu start up")
     if (sessionStorage.getItem('baidu_gtk') && sessionStorage.getItem('baidu_token')) return;
     const options = {
         method: 'GET',
@@ -431,8 +443,7 @@ async function translate_baidu_startup() {
 }
 
 async function translate_baidu(raw) {
-    console.log("baidu request")
-    const processed_raw = raw.length > 30 ? (raw.substr(0, 10) + raw.substr(~~(raw.length / 2) - 5, 10) + raw.substr(-10)) : raw;//process
+    const processed_raw = raw.length > 30 ? (raw.substring(0, 10) + raw.substring(~~(raw.length / 2) - 5, 10) + raw.substring(-10)) : raw;//process
     const tk_key = sessionStorage.getItem('baidu_gtk');
     const token = sessionStorage.getItem('baidu_token');//get token
     const options = {
@@ -525,10 +536,11 @@ async function translate_gg(raw) {
 
 // 腾讯翻译
 async function translate_tencent_startup() {
-    setTimeout(translate_tencent_startup, 10000)//token刷新
+    // token刷新
+    setTimeout(translate_tencent_startup, 10000)
     const base_options = {
         method: 'GET',
-        url: 'http://fanyi.qq.com',
+        url: 'https://fanyi.qq.com',
         anonymous: true,
         headers: {
             "User-Agent": "test",
