@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.63
+// @version      0.64
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -443,7 +443,7 @@ async function translate_baidu_startup() {
 }
 
 async function translate_baidu(raw) {
-    const processed_raw = raw.length > 30 ? (raw.substring(0, 10) + raw.substring(~~(raw.length / 2) - 5, 10) + raw.substring(-10)) : raw;//process
+    const processed_raw = raw.length > 30 ? (raw.substr(0, 10) + raw.substr(~~(raw.length / 2) - 5, 10) + raw.substr(-10)) : raw;//process
     const tk_key = sessionStorage.getItem('baidu_gtk');
     const token = sessionStorage.getItem('baidu_token');//get token
     const options = {
