@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.64
+// @version      0.70
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -305,16 +305,30 @@ function ToCDB(str) {
 async function RequestTranslate(ori, jpText, phrases) {
     const choice = GM_getValue('translate_choice', '百度翻译')
     let text = sessionStorage.getItem(choice + '-' + jpText)
+    const myInterval = setInterval(() => {
+        let seconds = new Date().getSeconds()
+        let nowText = "翻译中."
+        for (let i = 0; i < seconds % 3; i++) {
+            nowText += "."
+        }
+        let texts = ori.parentNode.getElementsByClassName("mt-text")
+        if (texts && texts[0].innerText.startsWith("翻译中")) {
+            texts[0].innerText = nowText
+        }
+        console.log(nowText)
+    }, 1000)
     if (!text) {
         try {
-            text = "翻译中……"
+            text = "翻译中."
             startup[choice]().then(() => {
                 transdict[choice](jpText, phrases).then(s => {
                     if ((s || "").length === 0) s = '翻译异常'
+                    clearInterval(myInterval)
                     ori.parentNode.getElementsByClassName("mt-text")[0].innerText = s
                 })
             })
         } catch (e) {
+            clearInterval(myInterval)
             console.log(e)
         }
     }
@@ -543,10 +557,17 @@ async function translate_gg(raw) {
 
 // ChatGPT翻译
 async function translate_chat_startup() {
-    // do nothing
+    let key = sessionStorage.getItem('chat_key')
+    if (!key) {
+        let apiKey = prompt("请输入ChatGPT密钥")
+        if (apiKey) {
+            sessionStorage.setItem('chat_key', apiKey)
+        }
+    }
 }
 
 async function translate_chat(raw) {
+    let key = sessionStorage.getItem('chat_key')
     const jsonData = {
         model: "gpt-3.5-turbo",
         messages: [{"role": "user", "content": "请将以下句子翻译成中文：" + raw}]
@@ -557,10 +578,22 @@ async function translate_chat(raw) {
         data: JSON.stringify(jsonData),
         headers: {
             "Content-Type": "application/json",
-            "Authorization": "Bearer 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",
+            "Authorization": "Bearer " + key,
         }
     }
-    return await Translate('ChatGPT', raw, options, res => JSON.parse(res).choices[0].message.content.replace(/\n/g, ""))
+    return await Translate('ChatGPT', raw, options, translate_chat_post)
+}
+
+function translate_chat_post(res) {
+    let msg = JSON.parse(res)
+    if (!msg.choices) {
+        sessionStorage.removeItem('chat_key')
+        console.log(res)
+        return ""
+    }
+    let tran = msg.choices[0].message.content
+    tran = tran.replace(/\n/g, "")
+    return tran
 }
 
 // 腾讯翻译
