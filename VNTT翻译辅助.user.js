@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.70
+// @version      0.71
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -9,6 +9,7 @@
 // @connect      fanyi.baidu.com
 // @connect      translate.google.com
 // @connect      fanyi.qq.com
+// @connect      transmart.qq.com
 // @connect      api.openai.com
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
@@ -18,6 +19,7 @@
 const transdict = {
     '百度翻译': translate_baidu,
     '腾讯翻译': translate_tencent,
+    '腾讯快速翻译': translate_tencent_fast,
     '谷歌翻译': translate_gg,
     'Mirai翻译': translate_mirai,
     'ChatGPT': translate_chat,
@@ -25,6 +27,7 @@ const transdict = {
 const startup = {
     '百度翻译': translate_baidu_startup,
     '腾讯翻译': translate_tencent_startup,
+    '腾讯快速翻译': translate_tencent_fast_startup,
     '谷歌翻译': translate_gg_startup,
     'Mirai翻译': translate_mirai_startup,
     'ChatGPT': translate_chat_startup,
@@ -305,19 +308,18 @@ function ToCDB(str) {
 async function RequestTranslate(ori, jpText, phrases) {
     const choice = GM_getValue('translate_choice', '百度翻译')
     let text = sessionStorage.getItem(choice + '-' + jpText)
-    const myInterval = setInterval(() => {
-        let seconds = new Date().getSeconds()
-        let nowText = "翻译中."
-        for (let i = 0; i < seconds % 3; i++) {
-            nowText += "."
-        }
-        let texts = ori.parentNode.getElementsByClassName("mt-text")
-        if (texts && texts[0].innerText.startsWith("翻译中")) {
-            texts[0].innerText = nowText
-        }
-        console.log(nowText)
-    }, 1000)
     if (!text) {
+        const myInterval = setInterval(() => {
+            let seconds = new Date().getSeconds()
+            let nowText = "翻译中."
+            for (let i = 0; i < seconds % 3; i++) {
+                nowText += "."
+            }
+            let texts = ori.parentNode.getElementsByClassName("mt-text")
+            if (texts && texts[0].innerText.startsWith("翻译中")) {
+                texts[0].innerText = nowText
+            }
+        }, 1000)
         try {
             text = "翻译中."
             startup[choice]().then(() => {
@@ -360,7 +362,6 @@ async function RequestTranslate(ori, jpText, phrases) {
         select.value = choice
         select.addEventListener('change', e => {
             GM_setValue('translate_choice', e.target.value)
-            console.log("set " + e.target.value)
             RequestTranslate(ori, jpText, phrases)
         })
         ori.after(spanNode2)
@@ -535,6 +536,30 @@ function translate_mirai_post(res) {
     return tran
 }
 
+// 腾讯快速翻译
+async function translate_tencent_fast_startup() {
+    // do nothing
+}
+
+async function translate_tencent_fast(raw) {
+    const jsonData = {
+        header: {fn: "auto_translation", client_key: ""},
+        type: "plain",
+        model_category: "normal",
+        source: {lang: "ja", "text_list": [raw]},
+        target: {lang: "zh"}
+    }
+    const options = {
+        method: "POST",
+        url: 'https://transmart.qq.com/api/imt',
+        data: JSON.stringify(jsonData),
+        headers: {
+            "Content-Type": 'application/json',
+        },
+    }
+    return await Translate('腾讯快速翻译', raw, options, res => JSON.parse(res).auto_translation[0])
+}
+
 // 谷歌翻译
 async function translate_gg_startup() {
     // do nothing
@@ -557,17 +582,17 @@ async function translate_gg(raw) {
 
 // ChatGPT翻译
 async function translate_chat_startup() {
-    let key = sessionStorage.getItem('chat_key')
+    let key = GM_getValue('chat_key')
     if (!key) {
         let apiKey = prompt("请输入ChatGPT密钥")
         if (apiKey) {
-            sessionStorage.setItem('chat_key', apiKey)
+            GM_setValue('chat_key', apiKey)
         }
     }
 }
 
 async function translate_chat(raw) {
-    let key = sessionStorage.getItem('chat_key')
+    let key = GM_getValue('chat_key')
     const jsonData = {
         model: "gpt-3.5-turbo",
         messages: [{"role": "user", "content": "请将以下句子翻译成中文：" + raw}]
