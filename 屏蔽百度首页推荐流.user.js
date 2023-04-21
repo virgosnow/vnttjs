@@ -3,9 +3,10 @@
 // @namespace    http://tampermonkey.net/
 // @version      0.1
 // @description  屏蔽百度个人首页新出的推荐流
-// @author       Virgosnow
+// @author       virgosnow
 // @match        https://www.baidu.com/
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=baidu.com
+// @license      MIT
 // @grant        none
 // ==/UserScript==
 
