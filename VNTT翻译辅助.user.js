@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.71
+// @version      0.72
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -14,6 +14,8 @@
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @downloadURL https://update.greasyfork.org/scripts/448572/VNTT%E7%BF%BB%E8%AF%91%E8%BE%85%E5%8A%A9.user.js
+// @updateURL https://update.greasyfork.org/scripts/448572/VNTT%E7%BF%BB%E8%AF%91%E8%BE%85%E5%8A%A9.meta.js
 // ==/UserScript==
 
 const transdict = {
@@ -292,6 +294,8 @@ function ToCDB(str) {
     let tmp = "";
     // 个别奇葩符号
     str = str.replace(/×/g, "x")
+    // 去掉换行
+    str = str.replace(/[\r\n]/g, "")
     // 全角英数字转半角
     for (let i = 0; i < str.length; i++) {
         if ((str.charCodeAt(i) >= 0xFF10 && str.charCodeAt(i) <= 0xFF19) ||
