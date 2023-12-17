@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.73
+// @version      0.74
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -17,6 +17,8 @@
 // @grant        GM_getValue
 // @require      https://cdn.jsdelivr.net/npm/js-base64@3.7.4/base64.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js
+// @downloadURL https://update.greasyfork.org/scripts/448572/VNTT%E7%BF%BB%E8%AF%91%E8%BE%85%E5%8A%A9.user.js
+// @updateURL https://update.greasyfork.org/scripts/448572/VNTT%E7%BF%BB%E8%AF%91%E8%BE%85%E5%8A%A9.meta.js
 // ==/UserScript==
 
 const transdict = {
@@ -730,6 +732,8 @@ async function Translate(name, raw, options, processor) {
         }
         return result
     } catch (err) {
+        // todo 彩云小译token失效
+        sessionStorage.removeItem('caiyun_jwt')
         throw {
             responseText: tmp,
             err: err
