@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.72
+// @version      0.73
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -11,11 +11,12 @@
 // @connect      fanyi.qq.com
 // @connect      transmart.qq.com
 // @connect      api.openai.com
+// @connect      api.interpreter.caiyunai.com
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
 // @grant        GM_getValue
-// @downloadURL https://update.greasyfork.org/scripts/448572/VNTT%E7%BF%BB%E8%AF%91%E8%BE%85%E5%8A%A9.user.js
-// @updateURL https://update.greasyfork.org/scripts/448572/VNTT%E7%BF%BB%E8%AF%91%E8%BE%85%E5%8A%A9.meta.js
+// @require      https://cdn.jsdelivr.net/npm/js-base64@3.7.4/base64.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js
 // ==/UserScript==
 
 const transdict = {
@@ -25,6 +26,7 @@ const transdict = {
     '谷歌翻译': translate_gg,
     'Mirai翻译': translate_mirai,
     'ChatGPT': translate_chat,
+    '彩云小译':translate_caiyun,
 };
 const startup = {
     '百度翻译': translate_baidu_startup,
@@ -33,6 +35,7 @@ const startup = {
     '谷歌翻译': translate_gg_startup,
     'Mirai翻译': translate_mirai_startup,
     'ChatGPT': translate_chat_startup,
+    '彩云小译':translate_caiyun_startup,
 };
 
 let currentRow;
@@ -667,13 +670,64 @@ async function translate_tencent(raw) {
     return await Translate('腾讯翻译', raw, options, res => JSON.parse(res).translate.records.map(e => e.targetText).join(''))
 }
 
+
+// 彩云翻译
+async function translate_caiyun_startup(){
+    if(sessionStorage.getItem('caiyun_id') && sessionStorage.getItem('caiyun_jwt'))return;
+    const browser_id=CryptoJS.MD5(Math.random().toString()).toString();
+    sessionStorage.setItem('caiyun_id',browser_id);
+    const options= {
+        method:"POST",
+        url:'https://api.interpreter.caiyunai.com/v1/user/jwt/generate',
+        headers:{
+            "Content-Type": "application/json",
+            "X-Authorization": "token:qgemv4jr1y38jyq6vhvi",
+            "Origin": "https://fanyi.caiyunapp.com",
+        },
+        data:JSON.stringify({browser_id}),
+    }
+    const res = await Request(options);
+    sessionStorage.setItem('caiyun_jwt',JSON.parse(res.responseText).jwt);
+}
+
+async function translate_caiyun(raw){
+    const source="NOPQRSTUVWXYZABCDEFGHIJKLMnopqrstuvwxyzabcdefghijklm";
+    const dic=[..."ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"].reduce((dic,current,index)=>{dic[current]=source[index];return dic},{});
+    const decoder = line => Base64.decode([...line].map(i=>dic[i]||i).join(""))
+    const options = {
+        method:"POST",
+        url:'https://api.interpreter.caiyunai.com/v1/translator',
+        data:JSON.stringify({
+            "source":raw.split('\n'),
+            "trans_type": "auto2zh",
+            "detect": true,
+            "browser_id": sessionStorage.getItem('caiyun_id')
+        }),
+        headers: {
+            "X-Authorization": "token:qgemv4jr1y38jyq6vhvi",
+            "T-Authorization": sessionStorage.getItem('caiyun_jwt')
+        }
+    }
+    return await Translate('彩云小译',raw,options,res=>JSON.parse(res).target.map(decoder).join('\n'))
+}
+
 async function Translate(name, raw, options, processor) {
     let tmp = "";
     try {
         const data = await Request(options);
         tmp = data.responseText;
-        const result = await processor(tmp);
-        if (result) sessionStorage.setItem(name + '-' + raw, result);
+        let result = await processor(tmp);
+        if (result) {
+            // 剔除特殊符号 start
+            result = result.replace(/ /g, "")
+            result = result.replace(/!/g, "！")
+            result = result.replace(/\?/g, "？")
+            result = result.replace(/^“/, "「")
+            result = result.replace(/”$/, "」")
+            result = result.replace(/\.\.\.+/g, "……")
+            // 剔除特殊符号 end
+            sessionStorage.setItem(name + '-' + raw, result);
+        }
         return result
     } catch (err) {
         throw {
