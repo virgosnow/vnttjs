@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.74
+// @version      0.75
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -470,7 +470,8 @@ async function translate_baidu_startup() {
         url: 'https://fanyi.baidu.com',
     }
     const res = await Request(options);
-    sessionStorage.setItem('baidu_token', /token: '(.*?)'/.exec(res.responseText)[1])
+    console.log(res.responseText)
+    sessionStorage.setItem('baidu_token', /    token: '(.*?)'/.exec(res.responseText)[1])
     sessionStorage.setItem('baidu_gtk', /window\.gtk = "(.*?)"/.exec(res.responseText)[1])
 }
 
@@ -675,14 +676,24 @@ async function translate_tencent(raw) {
 
 // 彩云翻译
 async function translate_caiyun_startup(){
-    if(sessionStorage.getItem('caiyun_id') && sessionStorage.getItem('caiyun_jwt'))return;
-    const browser_id=CryptoJS.MD5(Math.random().toString()).toString();
-    sessionStorage.setItem('caiyun_id',browser_id);
+    let browser_id = sessionStorage.getItem('caiyun_id')
+    if (!(browser_id)) {
+        browser_id=CryptoJS.MD5(Math.random().toString()).toString();
+        sessionStorage.setItem('caiyun_id',browser_id);
+        console.log("set caiyun_id="+browser_id)
+    }
+    if(sessionStorage.getItem('caiyun_jwt')) {
+        let now = Math.floor(Date.now() / 1000)
+        if(Number(sessionStorage.getItem('caiyun_expire')) > now) {
+            return
+        }
+        console.log("refresh caiyun token")
+    }
     const options= {
         method:"POST",
         url:'https://api.interpreter.caiyunai.com/v1/user/jwt/generate',
         headers:{
-            "Content-Type": "application/json",
+            "Content-Type": "application/json;charset=UTF-8",
             "X-Authorization": "token:qgemv4jr1y38jyq6vhvi",
             "Origin": "https://fanyi.caiyunapp.com",
         },
@@ -690,6 +701,7 @@ async function translate_caiyun_startup(){
     }
     const res = await Request(options);
     sessionStorage.setItem('caiyun_jwt',JSON.parse(res.responseText).jwt);
+    sessionStorage.setItem('caiyun_expire',JSON.parse(res.responseText).expire_time);
 }
 
 async function translate_caiyun(raw){
@@ -706,6 +718,7 @@ async function translate_caiyun(raw){
             "browser_id": sessionStorage.getItem('caiyun_id')
         }),
         headers: {
+            "Content-Type": "application/json;charset=UTF-8",
             "X-Authorization": "token:qgemv4jr1y38jyq6vhvi",
             "T-Authorization": sessionStorage.getItem('caiyun_jwt')
         }
@@ -732,8 +745,6 @@ async function Translate(name, raw, options, processor) {
         }
         return result
     } catch (err) {
-        // todo 彩云小译token失效
-        sessionStorage.removeItem('caiyun_jwt')
         throw {
             responseText: tmp,
             err: err
