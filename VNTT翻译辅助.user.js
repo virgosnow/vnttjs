@@ -470,7 +470,6 @@ async function translate_baidu_startup() {
         url: 'https://fanyi.baidu.com',
     }
     const res = await Request(options);
-    console.log(res.responseText)
     sessionStorage.setItem('baidu_token', /    token: '(.*?)'/.exec(res.responseText)[1])
     sessionStorage.setItem('baidu_gtk', /window\.gtk = "(.*?)"/.exec(res.responseText)[1])
 }
