@@ -7,7 +7,7 @@ https://greasyfork.org/zh-CN/scripts/448572-vntt%E7%BF%BB%E8%AF%91%E8%BE%85%E5%8
 主动提醒项目中该原文是否已经有现成翻译，避免多人合作时翻译不统一
 
 **· 机器翻译**  
-已接入 ChatGPT翻译、Mirai翻译、谷歌翻译、百度翻译、腾讯翻译  
+已接入 Mirai翻译、谷歌翻译、百度翻译、腾讯翻译、彩云小译、ChatGPT翻译（需要正式的token）
   
 **· 翻译记忆**  
 可以记忆使用者的所有翻译句子，并在翻译新句子时提供类似于Trados和MemoQ的智能填充  
