@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.75
+// @version      0.76
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://a.vntt.app/project*
@@ -12,6 +12,7 @@
 // @connect      transmart.qq.com
 // @connect      api.openai.com
 // @connect      api.interpreter.caiyunai.com
+// @connect      www2.deepl.com
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -28,7 +29,8 @@ const transdict = {
     '谷歌翻译': translate_gg,
     'Mirai翻译': translate_mirai,
     'ChatGPT': translate_chat,
-    '彩云小译':translate_caiyun,
+    '彩云小译': translate_caiyun,
+    'Deepl翻译':translate_deepl,
 };
 const startup = {
     '百度翻译': translate_baidu_startup,
@@ -37,7 +39,8 @@ const startup = {
     '谷歌翻译': translate_gg_startup,
     'Mirai翻译': translate_mirai_startup,
     'ChatGPT': translate_chat_startup,
-    '彩云小译':translate_caiyun_startup,
+    '彩云小译': translate_caiyun_startup,
+    'Deepl翻译': translate_deepl_startup,
 };
 
 let currentRow;
@@ -143,7 +146,9 @@ let currentRow;
                             window.scrollBy(0, 40)
                         }
                         // 查询重复语句
-                        FindDuplicate(ori.innerText, submit, editArea).then()
+                        if (currentRow.getElementsByClassName('badge-warning')[0]) {
+                             FindDuplicate(ori.innerText, submit, editArea).then()
+                        }
                         // 有翻译记忆采用翻译记忆
                         // 无翻译记忆开启机翻
                         if (chText !== '') {
@@ -379,7 +384,10 @@ async function RequestTranslate(ori, jpText, phrases) {
 
 // 查询重复语句
 async function FindDuplicate(jpText, submit, editArea) {
-    const searchUrl = 'https://a.vntt.app/project/hssh-renpy-tl-v3/search/ja/zh?original=true&exact=true&q=' + jpText
+    // 因为vntt的搜索限制，截取换行前的字符
+    const searchText = /.*\n/g.exec(jpText)
+    const projectCodeName = document.getElementById("project_codename").value
+    const searchUrl = 'https://a.vntt.app/project/' + projectCodeName + '/search/ja/zh?original=true&exact=true&q=' + jpText
     console.log(searchUrl)
     const options = {
         method: 'GET',
@@ -536,12 +544,6 @@ async function translate_mirai(raw, phrases) {
 
 function translate_mirai_post(res) {
     let tran = JSON.parse(res).outputs[0].output[0].translation
-    tran = tran.replace(/ /g, "")
-    tran = tran.replace(/!/g, "！")
-    tran = tran.replace(/\?/g, "？")
-    tran = tran.replace(/^“/, "「")
-    tran = tran.replace(/”$/, "」")
-    tran = tran.replace(/\.\.\.+/g, "……")
     return tran
 }
 
@@ -673,7 +675,7 @@ async function translate_tencent(raw) {
 }
 
 
-// 彩云翻译
+// 彩云小译
 async function translate_caiyun_startup(){
     let browser_id = sessionStorage.getItem('caiyun_id')
     if (!(browser_id)) {
@@ -723,6 +725,35 @@ async function translate_caiyun(raw){
         }
     }
     return await Translate('彩云小译',raw,options,res=>JSON.parse(res).target.map(decoder).join('\n'))
+}
+
+// Deepl翻译
+async function translate_deepl_startup() {
+    // do nothing
+}
+
+async function translate_deepl(raw) {
+    let id = Math.floor(Math.random() * 100000000);
+    let postData = JSON.stringify({
+        "jsonrpc":"2.0",
+        "method":"LMT_split_text",
+        "params":{"texts":[raw],"commonJobParams":{"mode":"translate"},"lang":{"lang_user_selected":"auto","preference":{"weight":{"EN":1,"JA":2},"default":"default"}}},
+        "id":id
+    })
+    const options = {
+        method: 'POST',
+        url: 'https://www2.deepl.com/jsonrpc',
+        data: postData,
+        headers: {
+            'Content-Type': 'application/json',
+            'Host': 'www.deepl.com',
+            'Origin': 'https://www.deepl.com',
+            'Referer': 'https://www.deepl.com/'
+        },
+        anonymous:true,
+        nocache:true,
+    }
+    return await Translate('Deepl翻译',raw,options,res=>JSON.parse(res).result.texts[0].text)
 }
 
 async function Translate(name, raw, options, processor) {
