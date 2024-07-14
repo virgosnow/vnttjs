@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.76
+// @version      0.77
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
-// @match        https://a.vntt.app/project*
+// @match        https://*.vntt.app/project*
 // @connect      miraitranslate.com
 // @connect      fanyi.baidu.com
 // @connect      translate.google.com
@@ -12,6 +12,7 @@
 // @connect      transmart.qq.com
 // @connect      api.openai.com
 // @connect      api.interpreter.caiyunai.com
+// @connect      hakuiteam.duckdns.org
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -39,10 +40,16 @@ const startup = {
 };
 
 let currentRow;
+let sourceLanguage;
+let translationLanguage;
 
 (function () {
     'use strict';
     console.log(`【VNTT翻译辅助】启动`);
+    sourceLanguage = document.getElementById("source_language").value
+    console.log(`【VNTT翻译辅助】源语言：` + sourceLanguage);
+    translationLanguage = document.getElementById("translation_language").value
+    console.log(`【VNTT翻译辅助】目标语言：` + translationLanguage);
     // 翻译时才启动
     document.querySelectorAll('tr.find-row').forEach(element => {
         const ori = element.getElementsByClassName('original')[0]
@@ -252,7 +259,8 @@ function GetMemText(jpText) {
     // 匹配去除代码块的文本 匹配不上返回空
     mmText = GM_getValue(jpTextNC)
     if (!mmText) {
-        return ''
+        // todo 添加云端
+        return GM_getValue("【云端】" +jpText)
     }
     // 能匹配上说明可以适用代码智能补全
     let codes = jpText.match(regex)
@@ -696,6 +704,8 @@ async function Translate(name, raw, options, processor) {
             result = result.replace(/^“/, "「")
             result = result.replace(/”$/, "」")
             result = result.replace(/\.\.\.+/g, "……")
+            result = result.replace(/呜/g, "唔")
+            result = result.replace(/咕/g, "唔")
             // 剔除特殊符号 end
             sessionStorage.setItem(name + '-' + raw, result);
         }
@@ -703,6 +713,45 @@ async function Translate(name, raw, options, processor) {
     } catch (err) {
         throw {
             responseText: tmp,
+            err: err
+        }
+    }
+}
+
+function LoadProjectTM(){
+    // 加载云端翻译
+    if (document.getElementById("project_codename")) {
+        const projectCodeName = document.getElementById("project_codename").value
+        console.log(`【VNTT翻译辅助】项目代号：` + projectCodeName);
+        FetchProjectTM(projectCodeName).then(s => {
+            let allLine = s.split('\n')
+            for (let i = 0; i < allLine.length; i++) {
+                let line = allLine[i]
+                // let oriTmText = "【云端】" + line.split('\t')[0]
+                let tmTexts = line.split('\t')
+                if (tmTexts.length > 1) {
+                    let oriTmText = line.split('\t')[0]
+                    let chsTmText = line.split('\t')[1]
+                    SetMemText(oriTmText, chsTmText)
+                }
+            }
+        })
+    }
+}
+
+async function FetchProjectTM(projectName) {
+    let result = "";
+    const options = {
+        method: 'GET',
+        url: 'http://hakuiteam.duckdns.org:4655/tm?project='+projectName,
+    }
+    try {
+        const data = await Request(options);
+        result = data.responseText;
+        return result
+    } catch (err) {
+        throw {
+            responseText: result,
             err: err
         }
     }
