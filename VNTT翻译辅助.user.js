@@ -380,9 +380,12 @@ async function RequestTranslate(ori, jpText, phrases) {
 // 查询重复语句
 async function FindDuplicate(jpText, submit, editArea) {
     // 因为vntt的搜索限制，截取换行前的字符
-    const searchText = /.*\n/g.exec(jpText)
+    let searchText = jpText
+    if ( /(.*)\n/g.exec(jpText) ) {
+        searchText = /(.*)\n/g.exec(jpText)[1]
+    }
     const projectCodeName = document.getElementById("project_codename").value
-    const searchUrl = 'https://a.vntt.app/project/' + projectCodeName + '/search/ja/zh?original=true&exact=true&q=' + jpText
+    const searchUrl = 'https://a.vntt.app/project/' + projectCodeName + '/search/ja/zh?original=true&exact=true&q=' + searchText
     console.log(searchUrl)
     const options = {
         method: 'GET',
