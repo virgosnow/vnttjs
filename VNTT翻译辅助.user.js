@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.76
+// @version      0.77
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
-// @match        https://a.vntt.app/project*
+// @match        https://*.vntt.app/project*
 // @connect      miraitranslate.com
 // @connect      fanyi.baidu.com
 // @connect      translate.google.com
