@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.77
+// @version      0.78
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://*.vntt.app/project*
@@ -689,14 +689,22 @@ async function Translate(name, raw, options, processor) {
         tmp = data.responseText;
         let result = await processor(tmp);
         if (result) {
-            // 剔除特殊符号 start
+            // 剔除特殊符号
             result = result.replace(/ /g, "")
             result = result.replace(/!/g, "！")
             result = result.replace(/\?/g, "？")
             result = result.replace(/^“/, "「")
             result = result.replace(/”$/, "」")
+            result = result.replace(/呜/g, "唔")
             result = result.replace(/\.\.\.+/g, "……")
-            // 剔除特殊符号 end
+            // 检查开头是否有「
+            if (raw.startsWith("「") && !result.startsWith("「")) {
+                result = "「" + result;
+            }
+            // 检查末尾是否有」
+            if (raw.endsWith("」") && !result.endsWith("」")) {
+                result = result + "」";
+            }
             sessionStorage.setItem(name + '-' + raw, result);
         }
         return result
