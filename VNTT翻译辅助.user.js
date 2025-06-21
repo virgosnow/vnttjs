@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNTT翻译辅助
 // @namespace    http://tampermonkey.net/
-// @version      0.78
+// @version      0.80
 // @description  为VNTT翻译平台集合机器翻译/术语提示/翻译记忆等常用CAT功能
 // @author       元宵
 // @match        https://*.vntt.app/project*
@@ -315,7 +315,7 @@ function ToCDB(str) {
 }
 
 async function RequestTranslate(ori, jpText, phrases) {
-    const choice = GM_getValue('translate_choice', '百度翻译')
+    const choice = GM_getValue('translate_choice', '彩云小译')
     let text = sessionStorage.getItem(choice + '-' + jpText)
     if (!text) {
         const myInterval = setInterval(() => {
